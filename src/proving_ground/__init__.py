@@ -15,6 +15,7 @@ from proving_ground.models import (
     Subgoal,
     Tier,
 )
+from proving_ground.harness import BenchmarkRun, run_benchmark
 from proving_ground.results import Leaderboard, ModelStanding, TierStats, aggregate
 from proving_ground.scoring import STANDARD_AXIOMS, score_decomposition
 
@@ -32,6 +33,8 @@ __all__ = [
     "ModelStanding",
     "TierStats",
     "aggregate",
+    "BenchmarkRun",
+    "run_benchmark",
 ]
 
 __version__ = "0.1.0"

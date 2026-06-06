@@ -1,0 +1,13 @@
+name = "provingground"
+defaultTargets = ["ProvingGround"]
+
+# Pin mathlib to a frozen rev for reproducible verification + cache hits. Update this
+# together with lean-toolchain (must match mathlib's own lean-toolchain exactly, or
+# `lake exe cache get` misses and triggers a multi-hour source build). See docs/LEAN.md.
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+# rev = "<pin-to-a-specific-sha-before-running-a-benchmark>"
+
+[[lean_lib]]
+name = "ProvingGround"
