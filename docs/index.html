@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>proving-ground leaderboard</title>
+  <style>
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 2rem 1rem; background: #0d1117; color: #c9d1d9;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+}
+main { max-width: 960px; margin: 0 auto; }
+h1 { font-size: 1.8rem; margin: 0 0 .25rem; color: #f0f6fc; }
+h2 { font-size: 1.2rem; margin: 2rem 0 .25rem; color: #f0f6fc; }
+.metric { color: #8b949e; font-size: .9rem; margin: 0 0 1.5rem; }
+.blurb { color: #8b949e; font-size: .85rem; margin: 0 0 .75rem; }
+.headline {
+  border: 1px solid #2ea043; background: #0f2417; border-radius: 8px;
+  padding: 1rem 1.25rem; margin: 0 0 2rem;
+}
+.headline h2 { margin-top: 0; color: #3fb950; }
+.headline ul { margin: .5rem 0 0; padding-left: 1.25rem; }
+.headline code { color: #3fb950; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; margin-bottom: .5rem; }
+th, td { padding: .5rem .6rem; text-align: right; border-bottom: 1px solid #21262d; }
+th:nth-child(2), td:nth-child(2) { text-align: left; }
+th:first-child, td:first-child { text-align: right; width: 3rem; }
+thead th { color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d; }
+tbody tr:hover { background: #161b22; }
+.contrib td { color: #3fb950; font-weight: 600; }
+.empty { color: #8b949e; font-style: italic; }
+code { background: #161b22; padding: .1rem .35rem; border-radius: 4px; font-size: .85em; }
+footer { margin-top: 2.5rem; color: #6e7681; font-size: .8rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>proving-ground leaderboard</h1>
+    <p class="metric">Metric: kernel-verified partial credit = discharged subgoal weight / total weight (0 = none, 1.0 = a complete kernel-checked proof). Reported per tier — never blended. The open tier reports solved/reductions only, not a partial scalar (see the open-tier note for why).</p>
+    <section class="headline">
+      <h2>🏆 Open-tier results</h2>
+      <p>Genuinely open conjectures — no partial scalar (partial progress on an unsolved problem is not a real, ungameable quantity). Reported: verified reductions and the new open lemmas they surface (re-entering the corpus). ⭐ marks an actual solve.</p>
+      <ul>
+        <li><strong>claude-code/opus</strong> — 2 verified reduction(s), 2 new open lemma(s) surfaced</li>
+        <li><strong>claude-code/sonnet</strong> — 2 verified reduction(s), 2 new open lemma(s) surfaced</li>
+        <li><strong>claude-code/haiku</strong> — 1 verified reduction(s), 2 new open lemma(s) surfaced</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Tier: <code>solved_recent</code></h2>
+      <p class="blurb">Calibration / contamination canary. A model that fails here is broken, not challenged.</p>
+      <table>
+        <thead><tr><th>Rank</th><th>Model</th><th>Attempted</th><th>Solved</th><th>Partial</th><th>Mean</th><th>Best</th></tr></thead>
+        <tbody>
+      <tr><td>1</td><td>claude-code/opus</td><td>2</td><td>2</td><td>0</td><td>1.000</td><td>1.000</td></tr>
+      <tr><td>2</td><td>claude-code/sonnet</td><td>2</td><td>2</td><td>0</td><td>1.000</td><td>1.000</td></tr>
+      <tr><td>3</td><td>claude-code/haiku</td><td>2</td><td>1</td><td>0</td><td>0.500</td><td>1.000</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Tier: <code>weakly_open</code></h2>
+      <p class="blurb">Open to current provers but plausibly tractable. Moving the needle here is doing something real.</p>
+      <table>
+        <thead><tr><th>Rank</th><th>Model</th><th>Attempted</th><th>Solved</th><th>Partial</th><th>Mean</th><th>Best</th></tr></thead>
+        <tbody>
+      <tr><td>1</td><td>claude-code/haiku</td><td>3</td><td>3</td><td>0</td><td>1.000</td><td>1.000</td></tr>
+      <tr><td>2</td><td>claude-code/sonnet</td><td>3</td><td>3</td><td>0</td><td>1.000</td><td>1.000</td></tr>
+      <tr><td>3</td><td>claude-code/opus</td><td>3</td><td>2</td><td>0</td><td>0.667</td><td>1.000</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Tier: <code>open</code></h2>
+      <p class="blurb">Genuinely open conjectures. No partial scalar is reported here — partial progress on an unsolved problem is not a real, ungameable quantity. We report solved (binary) and verified reductions that surface new open lemmas. Solving one is a contribution to mathematics.</p>
+      <table>
+        <thead><tr><th>Rank</th><th>Model</th><th>Attempted</th><th>Solved</th><th>Verified reductions</th><th>Open lemmas surfaced</th></tr></thead>
+        <tbody>
+      <tr><td>1</td><td>claude-code/opus</td><td>2</td><td>0</td><td>2</td><td>2</td></tr>
+      <tr><td>2</td><td>claude-code/sonnet</td><td>2</td><td>0</td><td>2</td><td>2</td></tr>
+      <tr><td>3</td><td>claude-code/haiku</td><td>2</td><td>0</td><td>1</td><td>2</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <footer>
+      A benchmark for LLMs on provably unsolved problems. Kernel-verified partial credit,
+      reported per tier.
+    </footer>
+  </main>
+</body>
+</html>
