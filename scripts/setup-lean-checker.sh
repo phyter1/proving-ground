@@ -25,7 +25,7 @@ export PATH="${ELAN_HOME}/bin:${PATH}"
 
 echo "==> Installing elan (Lean toolchain manager) into ${ELAN_HOME}"
 if ! command -v elan >/dev/null 2>&1; then
-  curl -fsSL https://raw.githubusercontent.com/leanprover-community/mathlib4/master/elan-init.sh \
+  curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
     | sh -s -- -y --default-toolchain "${TOOLCHAIN}"
 fi
 elan --version
