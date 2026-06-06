@@ -24,30 +24,31 @@ from proving_ground.scoring import score_decomposition
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("problems", help="Problem set JSON (corpus format).")
-    ap.add_argument("artifacts", help="artifacts.json from generate_artifacts.py.")
-    ap.add_argument("out", help="Where to write the RunResults JSON.")
+    ap.add_argument("artifacts", nargs="+", help="One or more artifacts.json (one per model).")
+    ap.add_argument("--out", required=True, help="Where to write the combined RunResults JSON.")
     ap.add_argument("--timestamp", required=True, help="ISO-8601 stamp for this run.")
     args = ap.parse_args(argv)
 
     problems = {p.id: p for p in load_corpus(args.problems)}
-    with open(args.artifacts, encoding="utf-8") as f:
-        bundle = json.load(f)
-    model = bundle["model"]
-
     checker = LeanInteractChecker(project_dir=os.environ.get("PG_LEAN_PROJECT"))
 
     results = []
-    for rec in bundle["records"]:
-        pid = rec["problem_id"]
-        problem = problems[pid]
-        if not rec.get("ok"):
-            score = Score(0.0, ScoreKind.NONE, 0.0, 0.0, (), f"generation failed: {rec.get('error')}")
-        else:
-            artifact = artifact_from_dict(rec["artifact"])
-            decomp = checker.check(artifact)
-            score = score_decomposition(decomp)
-        print(f"  {pid} [{problem.tier.value}]: {score.value:.3f} ({score.kind.value})", file=sys.stderr)
-        results.append(to_run_result(problem, model=model, score=score, timestamp=args.timestamp))
+    for path in args.artifacts:
+        with open(path, encoding="utf-8") as f:
+            bundle = json.load(f)
+        model = bundle["model"]
+        print(f"== {model} ({path}) ==", file=sys.stderr)
+        for rec in bundle["records"]:
+            pid = rec["problem_id"]
+            problem = problems[pid]
+            if not rec.get("ok"):
+                score = Score(0.0, ScoreKind.NONE, 0.0, 0.0, (), f"generation failed: {rec.get('error')}")
+            else:
+                artifact = artifact_from_dict(rec["artifact"])
+                decomp = checker.check(artifact)
+                score = score_decomposition(decomp)
+            print(f"  {pid} [{problem.tier.value}]: {score.value:.3f} ({score.kind.value})", file=sys.stderr)
+            results.append(to_run_result(problem, model=model, score=score, timestamp=args.timestamp))
 
     dump_results(results, args.out)
     print(f"Wrote {args.out}", file=sys.stderr)
