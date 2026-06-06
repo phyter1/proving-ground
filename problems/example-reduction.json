@@ -1,0 +1,22 @@
+{
+  "_comment": "Illustrative submission against a hypothetical open conjecture. The flags here are hand-set for demonstration; in a real run a Lean-backed checker (docker/) populates them by kernel verification. Try: proving-ground score problems/example-reduction.json",
+  "target_id": "example-conjecture-1",
+  "target_statement": "∀ n : ℕ, P n → Q n",
+  "root_implication_verified": true,
+  "statement_matches_target": true,
+  "axioms_clean": true,
+  "subgoals": [
+    {
+      "id": "base-case",
+      "statement": "P 0 → Q 0",
+      "weight": 1.0,
+      "discharged": true
+    },
+    {
+      "id": "inductive-step",
+      "statement": "∀ n : ℕ, (P n → Q n) → (P (n+1) → Q (n+1))",
+      "weight": 3.0,
+      "discharged": false
+    }
+  ]
+}

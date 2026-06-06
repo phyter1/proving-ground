@@ -1,0 +1,35 @@
+[project]
+name = "proving-ground"
+version = "0.1.0"
+description = "A benchmark for LLMs on provably unsolved problems: kernel-verified partial credit for partial progress on open mathematical conjectures."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "phyter1" }]
+keywords = ["llm", "benchmark", "lean", "formal-methods", "theorem-proving", "open-problems"]
+dependencies = []
+
+[project.optional-dependencies]
+# The Lean-backed checker. Only needed where a Lean toolchain exists (the fleet / Docker),
+# not for working on the metric itself.
+lean = ["lean-interact>=0.3"]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.urls]
+Homepage = "https://github.com/phyter1/proving-ground"
+Source = "https://github.com/phyter1/proving-ground"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/proving_ground"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
