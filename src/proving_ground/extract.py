@@ -90,44 +90,54 @@ def build_prompt(problem: Problem) -> list[dict[str, str]]:
 
 # Your task
 
-Produce a Lean 4 *decomposition* of the target:
+Produce a Lean 4 *verified reduction* of the target, using this exact structure:
 
 1. Begin with the preamble above, unchanged.
-2. Restate the target as the final `theorem`, byte-for-byte identical to the statement \
-above. Do not weaken it, generalize it, rename its binders, or change its type in any way.
-3. Introduce a set of named **lemmas** (subgoals) that, taken together, imply the target. \
-Give each a stable, descriptive name.
-4. Prove the **root implication**: the final target theorem must follow from your lemmas \
-by an explicit, complete proof (no `sorry` in the target proof itself).
-5. Prove as many of the lemmas as you genuinely can, with complete kernel-checkable Lean \
-proofs. For every lemma you cannot close, leave its proof body as exactly `sorry` — an \
-honest open subgoal. Partial progress is the goal; do not fake completeness.
+2. Introduce named **lemma theorems** (the subgoals). Each is a standalone \
+`theorem <name> : <statement> := <proof>`. Prove as many as you genuinely can; for every \
+one you cannot close, leave its body as exactly `:= by sorry` — an honest open subgoal.
+3. Write ONE **reduction theorem named exactly `reduction`** whose type takes each lemma's \
+statement as a hypothesis and concludes the target EXACTLY as given:
+
+   ```
+   theorem reduction : (<lemma 1 statement>) → (<lemma 2 statement>) → … → (<TARGET>) := \
+<complete proof>
+   ```
+
+   Taking the lemmas as *hypotheses* (not using the proved lemma theorems directly) is \
+what lets your reduction be credited even while some lemmas remain open. The `reduction` \
+proof itself must be COMPLETE — no `sorry` in it.
+
+The score is: the reduction must be valid and conclude the exact target, times the \
+fraction of lemma statements you actually proved. Lemmas you leave open become new, \
+smaller open problems — that is expected and valuable.
 
 # Hard rules (any violation scores ZERO for the whole submission)
 
-- DO NOT change the target statement's type or value. It is checked byte-identical to the \
-frozen spec.
-- DO NOT use `sorry` to fake a completed lemma or to close the root implication. `sorry` \
-is ONLY allowed as the honest body of a lemma you are explicitly leaving open.
-- DO NOT use `native_decide` (it is a soundness hole and is rejected by the axiom auditor). \
-Avoid any tactic that introduces axioms outside `propext`, `Classical.choice`, `Quot.sound`.
-- DO NOT close a lemma that is logically just the target itself (the null reduction \
+- The `reduction` theorem MUST conclude the target byte-identical to the frozen spec. \
+Do not weaken, generalize, or rename it. (Checked by elaborating \
+`example : … → (target) := @reduction`.)
+- DO NOT put `sorry` in the `reduction` proof. `sorry` is ONLY allowed as the honest body \
+of a lemma you are leaving open. (`#print axioms reduction` must be clean.)
+- DO NOT use `native_decide` (a soundness hole, rejected by the axiom auditor). Use only \
+axioms in `propext`, `Classical.choice`, `Quot.sound`.
+- DO NOT make a lemma that is logically just the target itself (the null reduction \
 "C follows from C" earns nothing).
 
 # Output format (required)
 
-First, a single fenced `lean` block containing the COMPLETE Lean source — preamble, every \
-lemma (proved or `sorry`), and the final target theorem with its proof:
+First, a single fenced `lean` block with the COMPLETE source — preamble, every lemma \
+(proved or `sorry`), and the `reduction` theorem:
 
 ```lean
 <your full Lean source here>
 ```
 
-Then, a single fenced `json` block listing the subgoal lemma ids you introduced, in \
-dependency order (the lemmas, NOT the final target theorem):
+Then, a single fenced `json` block listing the lemma ids in the SAME order they appear as \
+hypotheses of `reduction`:
 
 ```json
-{{"subgoal_ids": ["lemma_name_1", "lemma_name_2"]}}
+{{"subgoal_ids": ["lemma_name_1", "lemma_name_2"], "root_name": "reduction"}}
 ```
 
 Output the `lean` block and the `json` block and nothing else of substance. Prose outside \
@@ -166,8 +176,8 @@ def _extract_lean_source(blocks: list[tuple[str, str]], response_text: str) -> s
     )
 
 
-def _extract_subgoal_ids(blocks: list[tuple[str, str]], lean_source: str) -> tuple[str, ...]:
-    """Pull subgoal ids from the ```json manifest; fall back to scanning declarations."""
+def _parse_manifest(blocks: list[tuple[str, str]]) -> dict | None:
+    """Return the first parseable ```json manifest object, or None."""
     for lang, body in blocks:
         if lang != "json":
             continue
@@ -175,14 +185,23 @@ def _extract_subgoal_ids(blocks: list[tuple[str, str]], lean_source: str) -> tup
             manifest = json.loads(body)
         except json.JSONDecodeError:
             continue
-        ids = manifest.get("subgoal_ids") if isinstance(manifest, dict) else None
+        if isinstance(manifest, dict):
+            return manifest
+    return None
+
+
+def _extract_subgoal_ids(blocks: list[tuple[str, str]], lean_source: str) -> tuple[str, ...]:
+    """Pull subgoal ids from the ```json manifest; fall back to scanning declarations."""
+    manifest = _parse_manifest(blocks)
+    if manifest is not None:
+        ids = manifest.get("subgoal_ids")
         if isinstance(ids, list):
             cleaned = tuple(str(i) for i in ids if str(i).strip())
             if cleaned:
                 return cleaned
 
-    # Fallback: scan the Lean source for declaration names.
-    return _scan_declaration_names(lean_source)
+    # Fallback: scan the Lean source for declaration names, excluding the reduction theorem.
+    return tuple(n for n in _scan_declaration_names(lean_source) if n != "reduction")
 
 
 def _scan_declaration_names(lean_source: str) -> tuple[str, ...]:
@@ -221,11 +240,17 @@ def extract_artifact(problem: Problem, response_text: str) -> ProofArtifact:
     lean_source = _extract_lean_source(blocks, response_text)
     subgoal_ids = _extract_subgoal_ids(blocks, lean_source)
 
+    manifest = _parse_manifest(blocks)
+    root_name = "reduction"
+    if manifest is not None and isinstance(manifest.get("root_name"), str):
+        root_name = manifest["root_name"].strip() or "reduction"
+
     return ProofArtifact(
         target_id=problem.id,
         target_statement=problem.statement,
         lean_source=lean_source,
         subgoal_ids=subgoal_ids,
+        root_name=root_name,
     )
 
 

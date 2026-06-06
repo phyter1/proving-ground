@@ -37,6 +37,31 @@ A submission that discharges some subgoals is partial progress. A submission tha
 discharges none but still proves the reduction `(L₁ ∧ … ∧ Lₖ) → C` has reformulated the
 problem — which may or may not count as progress (see anti-gaming below).
 
+## The submission protocol (how a reduction is expressed in Lean)
+
+A subtlety the live kernel forces, and the reason the protocol looks the way it does:
+`#print axioms` is **transitive**. If a model proves the target *directly* from a lemma it
+left as `sorry`, then `#print axioms target` reports `sorryAx` — the whole thing looks
+unproven, and partial credit collapses back to binary. To verify "the target follows from
+the lemmas" *independently* of whether the lemmas are proven, the lemmas must enter the
+reduction as **hypotheses**. So a submission is:
+
+```lean
+-- each subgoal is its own theorem, proved or left open:
+theorem lemma_a : <statement A> := <proof>      -- discharged
+theorem lemma_b : <statement B> := by sorry     -- open subgoal
+
+-- the reduction takes the subgoal STATEMENTS as hypotheses and concludes the target:
+theorem reduction : (<statement A>) → (<statement B>) → (<frozen target>) := <proof>
+```
+
+The checker (`proving_ground.checker.LeanInteractChecker`) then runs, against a live
+kernel: `#print axioms lemma_a` (clean ⇒ discharged), `#print axioms reduction` (clean ⇒
+the reduction has no `sorry`/`native_decide`), and elaborates
+`example : (<A>) → (<B>) → (<frozen target>) := @reduction` (⇒ the reduction genuinely
+concludes the *frozen* target with those hypotheses — statement integrity in one check).
+This is implemented and verified end to end against Lean 4 / mathlib on the fleet.
+
 ## The hard gates (score 0 if any fail)
 
 Before any partial credit is computed, a submission must pass every one of these. These
