@@ -44,9 +44,13 @@ The corpus of open problems already exists (we reuse DeepMind's `formal-conjectu
 
 ## Status
 
-The full pipeline is scaffolded and tested end to end — **105 tests, no Lean toolchain
-required to run them.** The one remaining toolchain-bound piece is the live Lean
-verification leaves (clearly marked in `checker.py`), which run on the fleet / in Docker.
+End to end real. **113 tests** — 109 run with no toolchain (the metric, runner, corpus,
+leaderboard, orchestrator), and **4 live-Lean integration tests verify real proofs against
+Lean 4 / mathlib on the fleet** (partial reduction → 0.5, full proof → 1.0, goal-tampering
+→ 0, sorry-in-reduction → 0). The verification core — discharge detection, the axiom
+auditor, and statement-integrity — is implemented and confirmed against the actual kernel.
+
+Next: a first real run against frontier + local models, then the public leaderboard.
 
 ```
 src/proving_ground/
