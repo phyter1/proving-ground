@@ -1,0 +1,49 @@
+[
+  {
+    "model": "claude-code/opus",
+    "problem_id": "calib-add-identities",
+    "tier": "solved_recent",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 2.0,
+      "total_weight": 2.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T13:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/opus",
+    "problem_id": "tractable-consecutive",
+    "tier": "weakly_open",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 2.0,
+      "total_weight": 2.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T13:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/opus",
+    "problem_id": "twin-primes",
+    "tier": "open",
+    "score": {
+      "value": 0.6666666666666666,
+      "kind": "reduction",
+      "discharged_weight": 2.0,
+      "total_weight": 3.0,
+      "remaining_open_ids": [
+        "twin_pairs_unbounded"
+      ],
+      "rationale": "Verified reduction: 2/3 subgoal weight discharged; 1 open lemma(s) remain and re-enter the corpus as new problems."
+    },
+    "timestamp": "2026-06-06T13:00:00Z",
+    "artifact_ref": null
+  }
+]
