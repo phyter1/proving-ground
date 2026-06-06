@@ -33,18 +33,28 @@ from proving_ground.scoring import STANDARD_AXIOMS
 class ProofArtifact:
     """A raw submission from a model, before any checking.
 
+    The submission protocol (see docs/SCORING.md "submission protocol"): the source
+    declares each subgoal as its own theorem (proved or left ``sorry``), plus a *reduction*
+    theorem that takes the subgoal statements as hypotheses and concludes the frozen
+    target — ``reduction : H1 → … → Hk → Target``. Taking the lemmas as hypotheses is what
+    lets the reduction be verified independently of whether the lemmas are proven; without
+    it ``#print axioms`` on the target would transitively report ``sorryAx`` and partial
+    credit would be impossible.
+
     Attributes:
         target_id: The open problem being addressed.
         target_statement: The frozen Lean statement of the target (the spec).
-        lean_source: Full Lean source: the root implication proof plus each subgoal's
-            statement and (where attempted) proof. Subgoals left open contain ``sorry``.
-        subgoal_ids: Declared subgoal identifiers, in dependency order.
+        lean_source: Full Lean source: the reduction theorem plus each subgoal theorem.
+        subgoal_ids: Declared subgoal theorem names, in the order they appear as the
+            reduction's hypotheses.
+        root_name: Name of the reduction theorem (default ``"reduction"``).
     """
 
     target_id: str
     target_statement: str
     lean_source: str
     subgoal_ids: tuple[str, ...]
+    root_name: str = "reduction"
 
 
 class CheckerError(RuntimeError):
@@ -80,12 +90,19 @@ class LeanInteractChecker(LeanChecker):
     mysterious mid-run failure.
     """
 
-    def __init__(self, *, lean_version: str, mathlib_rev: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        lean_version: str | None = None,
+        project_dir: str | None = None,
+        timeout: int = 120,
+    ) -> None:
         if shutil.which("lake") is None:
             raise CheckerError(
                 "No Lean toolchain found (`lake` not on PATH). Run the checker on a "
-                "machine with Lean installed, or use the Docker image in docker/. The "
-                "scoring metric itself needs no toolchain."
+                "machine with Lean installed (e.g. ren4 with ELAN_HOME=/models/.elan on "
+                "PATH), or use the Docker image in docker/. The scoring metric itself "
+                "needs no toolchain."
             )
         try:
             import lean_interact  # noqa: F401
@@ -96,72 +113,112 @@ class LeanInteractChecker(LeanChecker):
             ) from exc
 
         self.lean_version = lean_version
-        self.mathlib_rev = mathlib_rev
-        self._server = None  # lazily started AutoLeanServer
+        self.project_dir = project_dir
+        self.timeout = timeout
+        self._server = None  # lazily started; reused across check() calls
+        self._mathlib_env = None  # env id after `import Mathlib`
 
-    def check(self, artifact: ProofArtifact) -> Decomposition:  # pragma: no cover
-        """Verify a submission against a live Lean toolchain.
+    def _ensure_server(self):
+        """Start the REPL once and import Mathlib once; reuse for every submission."""
+        if self._server is not None:
+            return
+        from lean_interact import AutoLeanServer, Command, LeanREPLConfig, LocalProject
 
-        The orchestration here is real and final: gather raw outputs from the toolchain,
-        then hand them to the tested, pure decision logic in :mod:`proving_ground.lean_checker`
-        (which carries the trust rules and is unit-tested without a toolchain). Only the
-        three toolchain-bound leaves below remain — they shell out to repl / Lean /
-        SafeVerify and are implemented in the Lean-integration milestone (runs on ren4 or
-        in the Docker image under ``docker/``).
+        if self.project_dir is not None:
+            config = LeanREPLConfig(project=LocalProject(directory=self.project_dir))
+        else:  # pragma: no cover - exercised on the fleet with a configured project
+            config = LeanREPLConfig()
+        self._server = AutoLeanServer(config)
+        base = self._server.run(Command(cmd="import Mathlib"))
+        self._mathlib_env = base.env
+
+    def check(self, artifact: ProofArtifact) -> Decomposition:  # pragma: no cover - needs Lean
+        """Verify a submission against a live Lean kernel. See docs/SCORING.md.
+
+        Protocol (probe-verified against repl on ren4):
+
+        1. Elaborate the whole submission once, in the Mathlib env.
+        2. For each subgoal theorem, ``#print axioms <name>`` — discharged iff that
+           succeeds and the axiom set is clean (no ``sorryAx`` from a ``sorry``, no
+           ``Lean.trustCompiler`` from ``native_decide``, no user axioms). ``#print axioms``
+           is transitive, so this is the real soundness check, not "it compiled".
+        3. ``#print axioms <reduction>`` — the reduction must itself be clean.
+        4. Statement integrity: elaborate
+           ``example : (H1) → … → (Hk) → (frozen target) := @<reduction>`` where each
+           ``Hi`` is the elaborated type of subgoal ``i``. This pins the reduction's
+           conclusion to the *frozen* target (blocks goal-tampering) and its hypotheses to
+           the declared subgoal statements — all in one kernel check.
         """
-        from proving_ground.lean_checker import derive_decomposition, parse_repl_response
+        from lean_interact import Command
 
-        # 1. Confirm the target statement was not tampered with (SafeVerify gate C).
-        statement_matches = self._safe_verify_statement(artifact)
+        self._ensure_server()
+        server, env = self._server, self._mathlib_env
 
-        # 2. Check the root implication (subgoals -> target) and each subgoal node.
-        root_repl = parse_repl_response(self._run_repl(artifact.lean_source, node="root"))
-        root_axioms = self._print_axioms(artifact, node="root")
+        # 1. Elaborate the whole submission.
+        server.run(Command(cmd=artifact.lean_source, env=env))
 
-        subgoal_specs: list[tuple[str, str, float]] = []
-        subgoal_repls = {}
-        subgoal_axioms = {}
+        # 2. Per-subgoal axiom audit + elaborated type.
+        subgoals: list[Subgoal] = []
+        hyp_types: list[str] = []
         for sg_id in artifact.subgoal_ids:
-            subgoal_specs.append((sg_id, self._statement_of(artifact, sg_id), 1.0))
-            subgoal_repls[sg_id] = parse_repl_response(
-                self._run_repl(artifact.lean_source, node=sg_id)
+            axioms = self._axioms_of(sg_id, env)
+            hyp_types.append(self._type_of(sg_id, env))
+            discharged = axioms is not None and axioms <= STANDARD_AXIOMS
+            subgoals.append(
+                Subgoal(id=sg_id, statement=hyp_types[-1] or sg_id, discharged=discharged)
             )
-            subgoal_axioms[sg_id] = self._print_axioms(artifact, node=sg_id)
 
-        # 3. Assemble the verdict via the tested decision logic.
-        return derive_decomposition(
+        # 3. Reduction axiom audit.
+        root_axioms = self._axioms_of(artifact.root_name, env)
+        root_clean = root_axioms is not None and root_axioms <= STANDARD_AXIOMS
+
+        # 4. Statement-integrity kernel check.
+        statement_matches = self._statement_integrity(artifact, hyp_types, env)
+
+        return Decomposition(
             target_id=artifact.target_id,
             target_statement=artifact.target_statement,
-            subgoal_specs=subgoal_specs,
-            root_repl=root_repl,
-            subgoal_repls=subgoal_repls,
-            subgoal_axioms=subgoal_axioms,
+            subgoals=tuple(subgoals),
+            root_implication_verified=root_clean and statement_matches,
             statement_matches_target=statement_matches,
-            root_axioms=root_axioms,
+            axioms_clean=root_clean,
         )
 
-    # --- toolchain-bound leaves (next milestone; need a live Lean) --------------
-    def _run_repl(self, lean_source: str, *, node: str) -> dict:  # pragma: no cover
-        raise NotImplementedError(
-            "Start an AutoLeanServer with a pickled `import Mathlib` env, submit the "
-            "source, and return the raw repl JSON (messages + sorries + env)."
-        )
+    # --- toolchain helpers ----------------------------------------------------
+    def _axioms_of(self, name: str, env) -> frozenset[str] | None:  # pragma: no cover
+        """Axiom set of a declaration, or None if it doesn't exist (failed to elaborate)."""
+        from lean_interact import Command
 
-    def _print_axioms(self, artifact: ProofArtifact, *, node: str) -> frozenset[str]:  # pragma: no cover  # noqa: E501
-        raise NotImplementedError(
-            "Run `#print axioms <node>` and `leanchecker --fresh`, return the axiom set."
-        )
+        from proving_ground.lean_checker import parse_axioms
 
-    def _safe_verify_statement(self, artifact: ProofArtifact) -> bool:  # pragma: no cover
-        raise NotImplementedError(
-            "Run SafeVerify to confirm the submitted target type+value is byte-identical "
-            "to the frozen spec (blocks goal tampering)."
-        )
+        resp = self._server.run(Command(cmd=f"#print axioms {name}", env=env))
+        if any(m.severity == "error" for m in resp.messages):
+            return None  # unknown identifier -> the declaration did not compile
+        for m in resp.messages:
+            if "depends on axioms" in m.data or "does not depend on" in m.data:
+                return parse_axioms(m.data)
+        return None
 
-    def _statement_of(self, artifact: ProofArtifact, subgoal_id: str) -> str:  # pragma: no cover  # noqa: E501
-        raise NotImplementedError(
-            "Extract the declared Lean type of the given subgoal from the submission."
-        )
+    def _type_of(self, name: str, env) -> str:  # pragma: no cover
+        """Elaborated type string of a declaration via ``#check @name`` (best effort)."""
+        from lean_interact import Command
+
+        resp = self._server.run(Command(cmd=f"#check @{name}", env=env))
+        for m in resp.messages:
+            if m.severity != "error" and " : " in m.data:
+                return m.data.split(" : ", 1)[1].strip()
+        return ""
+
+    def _statement_integrity(self, artifact, hyp_types, env) -> bool:  # pragma: no cover
+        """True iff `example : H1 → … → Hk → target := @reduction` elaborates cleanly."""
+        from lean_interact import Command
+
+        if not all(hyp_types):
+            return False  # a subgoal type we couldn't read -> fail closed
+        arrow = "".join(f"({h}) → " for h in hyp_types)
+        cmd = f"example : {arrow}({artifact.target_statement}) := @{artifact.root_name}"
+        resp = self._server.run(Command(cmd=cmd, env=env))
+        return not any(m.severity == "error" for m in resp.messages)
 
 
 class RecordingChecker(LeanChecker):
