@@ -174,15 +174,21 @@ class LeanInteractChecker(LeanChecker):
         submission = server.run(Command(cmd=source, env=self._mathlib_env))
         env = submission.env
 
-        # 2. Per-subgoal axiom audit + elaborated type.
+        # 2. Per-subgoal axiom audit + elaborated type. A discharged lemma that a generic
+        # decision procedure can close on its own is "free" — no mathematical progress — so
+        # it gets weight 0 and does not inflate a partial reduction's score (the twin-primes
+        # glue problem; see analysis/first-run-findings.md). Open subgoals keep weight 1:
+        # they are the remaining work.
         subgoals: list[Subgoal] = []
         hyp_types: list[str] = []
         for sg_id in artifact.subgoal_ids:
             axioms = self._axioms_of(sg_id, env)
-            hyp_types.append(self._type_of(sg_id, env))
+            ty = self._type_of(sg_id, env)
+            hyp_types.append(ty)
             discharged = axioms is not None and axioms <= STANDARD_AXIOMS
+            weight = 0.0 if (discharged and self._auto_closable(ty)) else 1.0
             subgoals.append(
-                Subgoal(id=sg_id, statement=hyp_types[-1] or sg_id, discharged=discharged)
+                Subgoal(id=sg_id, statement=ty or sg_id, weight=weight, discharged=discharged)
             )
 
         # 3. Reduction axiom audit.
@@ -225,6 +231,23 @@ class LeanInteractChecker(LeanChecker):
             if m.severity != "error" and " : " in m.data:
                 return m.data.split(" : ", 1)[1].strip()
         return ""
+
+    #: Conservative finishing tactics. A goal any of these closes from scratch (with only
+    #: Mathlib in scope, not the model's other lemmas) is "free" — a decision procedure, not
+    #: progress. Deliberately excludes strong/closing-too-much tactics like `simp`/`exact?`.
+    TRIVIAL_TACTICS = ("omega", "decide", "norm_num", "rfl", "intro _ <;> omega")
+
+    def _auto_closable(self, type_str: str, env=None) -> bool:  # pragma: no cover
+        """True iff a conservative decision procedure proves `type_str` with Mathlib alone."""
+        from lean_interact import Command
+
+        if not type_str:
+            return False
+        base = self._mathlib_env if env is None else env
+        tac = " | ".join(self.TRIVIAL_TACTICS)
+        cmd = f"example : ({type_str}) := by first | {tac}"
+        resp = self._server.run(Command(cmd=cmd, env=base))
+        return not any(m.severity == "error" for m in resp.messages)
 
     def _statement_integrity(self, artifact, hyp_types, env) -> bool:  # pragma: no cover
         """True iff `example : H1 → … → Hk → target := @reduction` elaborates cleanly."""
