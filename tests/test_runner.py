@@ -11,6 +11,7 @@ from proving_ground.checker import ProofArtifact
 from proving_ground.models import Problem, Score, ScoreKind, Tier
 from proving_ground.runner import (
     DEFAULT_BASE_URL,
+    ClaudeCodeRunner,
     ModelRunner,
     OpenAICompatibleRunner,
     RunnerError,
@@ -195,3 +196,37 @@ def test_to_run_result_artifact_ref_optional():
     score = Score(0.0, ScoreKind.NONE, 0.0, 0.0, (), "no progress")
     rr = to_run_result(p, model="m", score=score, timestamp="2026-06-06T00:00:00Z")
     assert rr.artifact_ref is None
+
+
+def test_claude_code_runner_invokes_cli_and_returns_output():
+    captured = {}
+
+    def fake_invoke(user, system):
+        captured["user"] = user
+        captured["system"] = system
+        return "```lean\ntheorem reduction : True := trivial\n```"
+
+    runner = ClaudeCodeRunner(model="opus", invoke=fake_invoke)
+    assert runner.name == "claude-code/opus"
+
+    out = runner.complete(
+        [{"role": "system", "content": "SYS"}, {"role": "user", "content": "USR"}]
+    )
+    assert "reduction" in out
+    assert captured["system"] == "SYS"
+    assert captured["user"] == "USR"
+
+
+def test_claude_code_runner_end_to_end_with_extract():
+    response = (
+        "Here is my reduction.\n\n"
+        "```lean\ntheorem sg_a : True := trivial\n"
+        "theorem reduction : True → True := id\n```\n\n"
+        '```json\n{"subgoal_ids": ["sg_a"], "root_name": "reduction"}\n```\n'
+    )
+    runner = ClaudeCodeRunner(invoke=lambda user, system: response)
+    p = _problem(statement="True")
+    artifact = attempt(p, runner)
+    assert artifact.target_statement == "True"
+    assert artifact.subgoal_ids == ("sg_a",)
+    assert artifact.root_name == "reduction"

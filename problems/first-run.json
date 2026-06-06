@@ -1,0 +1,35 @@
+[
+  {
+    "id": "calib-add-identities",
+    "statement": "∀ n : ℕ, n + 0 = n ∧ 0 + n = n",
+    "tier": "solved_recent",
+    "source": "proving-ground/first-run",
+    "title": "Additive identities (calibration)",
+    "references": [],
+    "preamble": "import Mathlib",
+    "proved_after": null,
+    "metadata": {"note": "calibration: a capable model should reach 1.0"}
+  },
+  {
+    "id": "tractable-consecutive",
+    "statement": "∀ n : ℕ, n ≤ n + 1 ∧ 2 ∣ n * (n + 1)",
+    "tier": "weakly_open",
+    "source": "proving-ground/first-run",
+    "title": "Order + parity of consecutive integers",
+    "references": [],
+    "preamble": "import Mathlib",
+    "proved_after": null,
+    "metadata": {"note": "two lemmas of differing difficulty; tests partial credit"}
+  },
+  {
+    "id": "twin-primes",
+    "statement": "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)",
+    "tier": "open",
+    "source": "proving-ground/first-run",
+    "title": "Twin Prime Conjecture",
+    "references": ["https://en.wikipedia.org/wiki/Twin_prime"],
+    "preamble": "import Mathlib",
+    "proved_after": null,
+    "metadata": {"note": "genuinely open; a nonzero score here would be historic"}
+  }
+]

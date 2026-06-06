@@ -153,6 +153,53 @@ def _content_from_chat_response(data: object, endpoint: str) -> str:
     return content
 
 
+class ClaudeCodeRunner(ModelRunner):
+    """Runs the Claude Code CLI headless (``claude -p``) as the model.
+
+    Free and uses the existing terminal auth — no API key. The CLI runs wherever it is
+    logged in (here: Ryan's Air); the resulting :class:`ProofArtifact` is then shipped to a
+    Lean host for verification. The subprocess call is injectable (``invoke``) so the path
+    is unit-testable without spawning ``claude``.
+    """
+
+    def __init__(
+        self,
+        *,
+        model: str | None = None,
+        timeout: float = DEFAULT_TIMEOUT,
+        invoke=None,
+    ) -> None:
+        self.model = model
+        self.timeout = timeout
+        self.name = f"claude-code/{model or 'default'}"
+        self._invoke = invoke or self._default_invoke
+
+    def _default_invoke(self, prompt: str, system: str) -> str:
+        import subprocess
+
+        args = ["claude", "-p", prompt, "--append-system-prompt", system]
+        if self.model:
+            args += ["--model", self.model]
+        try:
+            proc = subprocess.run(
+                args, capture_output=True, text=True, timeout=self.timeout
+            )
+        except FileNotFoundError as exc:
+            raise RunnerError("`claude` CLI not found on PATH.") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise RunnerError(f"claude -p timed out after {self.timeout}s.") from exc
+        if proc.returncode != 0:
+            raise RunnerError(f"claude -p failed (exit {proc.returncode}): {proc.stderr[:500]}")
+        if not proc.stdout.strip():
+            raise RunnerError("claude -p returned empty output.")
+        return proc.stdout
+
+    def complete(self, messages: list[dict[str, str]]) -> str:
+        system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
+        user = "\n\n".join(m["content"] for m in messages if m["role"] != "system")
+        return self._invoke(user, system)
+
+
 def attempt(problem: Problem, runner: ModelRunner) -> ProofArtifact:
     """Run one full attempt: build the prompt, complete it, extract the artifact.
 

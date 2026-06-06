@@ -242,6 +242,28 @@ def standard_axioms() -> frozenset[str]:
     return STANDARD_AXIOMS
 
 
+def artifact_to_dict(artifact: ProofArtifact) -> dict:
+    """Serialize a ProofArtifact (e.g. to ship from the model host to a Lean host)."""
+    return {
+        "target_id": artifact.target_id,
+        "target_statement": artifact.target_statement,
+        "lean_source": artifact.lean_source,
+        "subgoal_ids": list(artifact.subgoal_ids),
+        "root_name": artifact.root_name,
+    }
+
+
+def artifact_from_dict(data: dict) -> ProofArtifact:
+    """Inverse of :func:`artifact_to_dict`."""
+    return ProofArtifact(
+        target_id=data["target_id"],
+        target_statement=data["target_statement"],
+        lean_source=data["lean_source"],
+        subgoal_ids=tuple(data.get("subgoal_ids", [])),
+        root_name=data.get("root_name", "reduction"),
+    )
+
+
 __all__ = [
     "ProofArtifact",
     "CheckerError",
@@ -250,4 +272,6 @@ __all__ = [
     "RecordingChecker",
     "Subgoal",
     "standard_axioms",
+    "artifact_to_dict",
+    "artifact_from_dict",
 ]
