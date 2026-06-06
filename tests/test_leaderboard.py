@@ -75,8 +75,8 @@ def test_markdown_mentions_partial_credit_metric():
 
 def test_markdown_highlights_open_contribution():
     md = render_markdown(_board())
-    # Headline section calls out model-a's nonzero open score.
-    assert "Open-tier contributions" in md
+    # Headline section calls out the open-tier verified reductions; nonzero gets a star.
+    assert "Open-tier verified reductions" in md
     assert "⭐" in md
 
 
@@ -109,7 +109,7 @@ def test_html_has_each_tier_and_model():
 
 def test_html_highlights_open_contribution():
     h = render_html(_board())
-    assert "Open-tier contributions" in h
+    assert "Open-tier verified reductions" in h
     assert "contrib" in h  # the highlighted row / section class
     assert "⭐" in h
 

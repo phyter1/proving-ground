@@ -59,21 +59,24 @@ def render_markdown(leaderboard: Leaderboard) -> str:
     """Render the leaderboard as markdown — one table per tier."""
     lines: list[str] = ["# proving-ground leaderboard", "", _METRIC_LINE, ""]
 
-    contributors = leaderboard.open_contributors()
-    if contributors:
-        lines.append("## 🏆 Open-tier contributions")
+    artifacts = leaderboard.open_reduction_artifacts()
+    if artifacts:
+        lines.append("## 🏆 Open-tier verified reductions")
         lines.append("")
         lines.append(
-            "**Nonzero score on the `open` tier — verifiable progress on genuinely "
-            "unsolved problems:**"
+            "**Kernel-checked reductions of genuinely open problems.** The substance is the "
+            "reduction artifact and the new, smaller open lemmas it surfaces (which re-enter "
+            "the corpus) — the score is a conservative floor, not the headline. A scalar "
+            "above 0 means a non-trivial lemma was also discharged:"
         )
         lines.append("")
-        for s in contributors:
+        for s in artifacts:
             st = s.per_tier[Tier.OPEN]
+            mark = "⭐ " if st.best_score > 0.0 else ""
             lines.append(
-                f"- **{s.model}** — best `{_fmt(st.best_score)}`, "
-                f"mean `{_fmt(st.mean_score)}` over {st.attempted} attempt(s), "
-                f"{st.open_lemmas_surfaced} open lemma(s) surfaced"
+                f"- {mark}**{s.model}** — {st.verified_reductions} verified reduction(s), "
+                f"{st.open_lemmas_surfaced} new open lemma(s) surfaced; "
+                f"score floor `{_fmt(st.best_score)}`"
             )
         lines.append("")
 
@@ -189,24 +192,26 @@ def _html_tier_section(leaderboard: Leaderboard, tier: Tier) -> str:
 
 
 def _html_headline(leaderboard: Leaderboard) -> str:
-    contributors = leaderboard.open_contributors()
-    if not contributors:
+    artifacts = leaderboard.open_reduction_artifacts()
+    if not artifacts:
         return ""
     items: list[str] = []
-    for s in contributors:
+    for s in artifacts:
         st = s.per_tier[Tier.OPEN]
+        mark = "⭐ " if st.best_score > 0.0 else ""
         items.append(
-            f"        <li><strong>{_esc(s.model)}</strong> — best "
-            f"<code>{_fmt(st.best_score)}</code>, mean <code>{_fmt(st.mean_score)}</code> "
-            f"over {st.attempted} attempt(s), {st.open_lemmas_surfaced} open lemma(s) "
-            f"surfaced</li>"
+            f"        <li>{mark}<strong>{_esc(s.model)}</strong> — "
+            f"{st.verified_reductions} verified reduction(s), "
+            f"{st.open_lemmas_surfaced} new open lemma(s) surfaced; "
+            f"score floor <code>{_fmt(st.best_score)}</code></li>"
         )
     items_html = "\n".join(items)
     return (
         '    <section class="headline">\n'
-        "      <h2>🏆 Open-tier contributions</h2>\n"
-        "      <p>Nonzero score on the <code>open</code> tier — verifiable progress on "
-        "genuinely unsolved problems:</p>\n"
+        "      <h2>🏆 Open-tier verified reductions</h2>\n"
+        "      <p>Kernel-checked reductions of genuinely open problems. The substance is the "
+        "reduction artifact and the new, smaller open lemmas it surfaces (re-entering the "
+        "corpus); the score is a conservative floor, not the headline.</p>\n"
         f"      <ul>\n{items_html}\n      </ul>\n"
         "    </section>"
     )

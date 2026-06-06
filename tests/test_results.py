@@ -203,3 +203,36 @@ def test_modelstanding_is_frozen():
     except AttributeError:
         return
     raise AssertionError("ModelStanding should be frozen")
+
+
+def test_scalar_zero_reduction_is_a_headlined_artifact():
+    """A valid open-tier reduction that scores 0 (all discharged lemmas trivial) must still
+    count as an artifact and be surfaced — the twin-primes case from the first real run."""
+    from proving_ground.models import RunResult, Score, ScoreKind, Tier
+    from proving_ground.results import aggregate
+
+    twin = RunResult(
+        model="claude-code/opus",
+        problem_id="twin-primes",
+        tier=Tier.OPEN,
+        score=Score(
+            value=0.0,
+            kind=ScoreKind.REDUCTION,
+            discharged_weight=0.0,
+            total_weight=1.0,
+            remaining_open_ids=("twin_pairs_unbounded",),
+            rationale="verified reduction; only trivial glue discharged",
+        ),
+        timestamp="2026-06-06T14:00:00Z",
+    )
+    board = aggregate([twin])
+    standing = board.standings[0]
+    st = standing.per_tier[Tier.OPEN]
+
+    assert st.verified_reductions == 1
+    assert st.best_score == 0.0
+    assert st.open_lemmas_surfaced == 1
+    # Not a "contribution" (scalar 0) but IS a headlined reduction artifact.
+    assert not standing.open_contribution()
+    assert standing.open_reduction_artifact()
+    assert board.open_reduction_artifacts() == [standing]

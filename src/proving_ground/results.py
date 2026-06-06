@@ -108,6 +108,7 @@ class TierStats:
     partial: int  # 0 < score < 1
     best_score: float
     open_lemmas_surfaced: int
+    verified_reductions: int  # kind == REDUCTION (a valid reduction artifact, any score)
 
 
 @dataclass(frozen=True)
@@ -133,6 +134,17 @@ class ModelStanding:
         """
         st = self.per_tier.get(Tier.OPEN)
         return st is not None and st.best_score > 0.0
+
+    def open_reduction_artifact(self) -> bool:
+        """True iff this model produced a verified reduction on the ``open`` tier.
+
+        After the auto-closable discount, a genuinely hard open problem can score 0.0 while
+        still yielding a *valid kernel-checked reduction* that surfaces a new, smaller open
+        lemma. That artifact is the real output even when the scalar is a floor of 0 — so we
+        headline it independently of the score (see analysis/first-run-findings.md).
+        """
+        st = self.per_tier.get(Tier.OPEN)
+        return st is not None and (st.verified_reductions > 0 or st.best_score > 0.0)
 
 
 @dataclass(frozen=True)
@@ -164,6 +176,14 @@ class Leaderboard:
         """Models with a nonzero ``open``-tier score, best-first — the headline."""
         return [s for s in self.rank(Tier.OPEN) if s.open_contribution()]
 
+    def open_reduction_artifacts(self) -> list[ModelStanding]:
+        """Models that produced a verified open-tier reduction (artifact), best-first.
+
+        Includes scalar-0 reductions — the valid-reduction-plus-residual artifact is the
+        substance the leaderboard headlines, with the score shown only as a floor.
+        """
+        return [s for s in self.rank(Tier.OPEN) if s.open_reduction_artifact()]
+
 
 def _tier_stats(scores: list[Score]) -> TierStats:
     attempted = len(scores)
@@ -173,6 +193,7 @@ def _tier_stats(scores: list[Score]) -> TierStats:
     partial = sum(1 for v in values if 0.0 < v < 1.0)
     best = max(values) if values else 0.0
     surfaced = sum(len(s.remaining_open_ids) for s in scores)
+    reductions = sum(1 for s in scores if s.kind is ScoreKind.REDUCTION)
     return TierStats(
         attempted=attempted,
         mean_score=mean,
@@ -180,6 +201,7 @@ def _tier_stats(scores: list[Score]) -> TierStats:
         partial=partial,
         best_score=best,
         open_lemmas_surfaced=surfaced,
+        verified_reductions=reductions,
     )
 
 
