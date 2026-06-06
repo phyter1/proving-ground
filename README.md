@@ -42,15 +42,35 @@ The corpus of open problems already exists (we reuse DeepMind's `formal-conjectu
 3. **Contamination renewal**: even the calibration tier is sourced from lemmas proved
    *after* a model's training cutoff, so a public benchmark stays uncontaminated.
 
+## Leaderboard
+
+**Live: https://phyter1.github.io/proving-ground/**
+
+First multi-model run: Claude Opus / Sonnet / Haiku (via the Claude Code CLI, headless),
+verified against Lean 4 / mathlib. Calibration and weakly-open problems show real partial
+credit and model differentiation; on the **open** tier nobody scores a partial number — by
+design (see below) — only *solved* (binary) and *verified reductions* that surface new open
+lemmas. Reproduce: `scripts/generate_artifacts.py` (model host) → `scripts/score_artifacts.py`
+(Lean host) → `proving-ground leaderboard runs/benchmark-v1-claude.json`.
+
 ## Status
 
-End to end real. **113 tests** — 109 run with no toolchain (the metric, runner, corpus,
-leaderboard, orchestrator), and **4 live-Lean integration tests verify real proofs against
-Lean 4 / mathlib on the fleet** (partial reduction → 0.5, full proof → 1.0, goal-tampering
-→ 0, sorry-in-reduction → 0). The verification core — discharge detection, the axiom
-auditor, and statement-integrity — is implemented and confirmed against the actual kernel.
+End to end real, run against real models. **~120 tests**; the metric/runner/corpus/
+leaderboard run with no toolchain, and live integration tests verify real proofs against
+Lean 4 / mathlib on the fleet (partial → 0.5, full → 1.0, goal-tampering → 0,
+sorry-in-reduction → 0).
 
-Next: a first real run against frontier + local models, then the public leaderboard.
+Two things the first runs taught us, both now fixed:
+
+1. **Trivial glue inflates scores.** A model factors a problem into the hard open core
+   (`sorry`) plus easy lemmas and gets credit for the easy lemmas. Fixed by *discounting
+   auto-closable lemmas* (a subgoal a decision procedure closes on its own gets weight 0).
+2. **A partial scalar on an open problem is meaningless and gameable.** Confirmed across
+   models (Haiku padded Goldbach to "0.8" with finite cases). Fixed by reporting the open
+   tier as *solved-or-not + verified reductions*, never a partial number. Partial credit
+   stays where it's meaningful: the calibration and weakly-open tiers.
+
+See [`analysis/first-run-findings.md`](analysis/first-run-findings.md).
 
 ```
 src/proving_ground/

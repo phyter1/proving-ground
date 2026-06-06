@@ -74,3 +74,31 @@ Re-scored run: `runs/first-run-claude-code.json`. Open question still open: how 
 reduction that genuinely makes the residual *easier* than the original (requires a hardness
 signal we don't yet have); the discount only removes free lemmas, it doesn't reward genuine
 simplification.
+
+## Multi-model run (Opus / Sonnet / Haiku), 2026-06-06
+
+`runs/benchmark-v1-claude.json`, 7 problems (`problems/benchmark-v1.json`), three Claude
+models via the Claude Code CLI, verified on ren4. Highlights:
+
+- **The discount is necessary but not sufficient.** Haiku decomposed Goldbach into the open
+  core plus four *finite* cases (`∃ p q, prime p ∧ prime q ∧ p + q = 8`, etc.). Those are
+  mathematically trivial but **not** auto-closable — `decide` can't discharge an existential
+  over ℕ — so each survived the discount as weight 1 and inflated the scalar to **0.8**.
+  Meanwhile Opus gave an honest twin-primes decomposition (isolating
+  `{p | Prime p ∧ Prime (p+2)}.Infinite` and proving a real unboundedness lemma) and still
+  scored **0.5**, because the proved lemma is trivial *relative to* the open core.
+- **Conclusion: don't report a partial scalar on the open tier at all.** A partial number on
+  a genuinely open problem isn't a real, ungameable quantity. The open tier now reports only
+  *solved* (binary) and *verified reductions* + residual open lemmas. This neutralizes the
+  Goldbach padding (it's just "1 verified reduction" like everyone) and stops overstating
+  honest-but-trivial decompositions. Partial credit remains on `solved_recent` /
+  `weakly_open`, where the problems are closed and proving a lemma genuinely is progress.
+- **Honest model differentiation appeared:** Haiku flubbed the trivial `add-identities`
+  calibration; Opus failed `even-or-odd` by citing a non-existent lemma (`even_zero`) — the
+  checker correctly rejected it (not a false negative; the identifier truly is unknown in
+  this mathlib). The verifier behaves.
+
+Implemented in `results.py` (`rank_open`, suppressed open scalar) and `leaderboard.py`
+(open-tier table = solved + verified reductions + lemmas surfaced; headline ⭐ = an actual
+solve). The deeper open question — rewarding genuine *simplification* of the residual —
+still needs a hardness signal we don't have.
