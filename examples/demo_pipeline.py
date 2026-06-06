@@ -14,9 +14,9 @@ from proving_ground.checker import ProofArtifact, RecordingChecker
 from proving_ground.corpus import parse_formal_conjecture, renew_from_decomposition
 from proving_ground.harness import run_benchmark
 from proving_ground.leaderboard import render_markdown
-from proving_ground.models import Decomposition, Subgoal, Tier
+from proving_ground.models import Decomposition, Subgoal
 from proving_ground.results import aggregate
-from proving_ground.runner import ModelRunner, to_run_result
+from proving_ground.runner import ModelRunner
 
 # 1. INGEST: a formal-conjectures-style source becomes Problems.
 LEAN_SOURCE = """\
