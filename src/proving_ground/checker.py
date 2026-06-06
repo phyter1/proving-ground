@@ -61,6 +61,18 @@ class CheckerError(RuntimeError):
     """Raised when the checking environment itself is broken (not a failed proof)."""
 
 
+def _strip_imports(source: str) -> str:
+    """Drop `import` lines from a submission.
+
+    The checker runs submissions against an env that has already imported Mathlib, and Lean
+    rejects `import` inside a command run against an existing env. Mathlib is the umbrella
+    import, so dropping import lines is safe for mathlib-based problems.
+    """
+    return "\n".join(
+        line for line in source.splitlines() if not line.lstrip().startswith("import ")
+    )
+
+
 class LeanChecker(ABC):
     """Turns a raw :class:`ProofArtifact` into a verified :class:`Decomposition`.
 
@@ -156,7 +168,10 @@ class LeanInteractChecker(LeanChecker):
 
         # 1. Elaborate the whole submission. The returned env holds the new declarations;
         # every subsequent query must run against THAT env, not the base Mathlib one.
-        submission = server.run(Command(cmd=artifact.lean_source, env=self._mathlib_env))
+        # Strip `import` lines: the base env already imported Mathlib, and `import` is
+        # rejected inside a command run against an existing env.
+        source = _strip_imports(artifact.lean_source)
+        submission = server.run(Command(cmd=source, env=self._mathlib_env))
         env = submission.env
 
         # 2. Per-subgoal axiom audit + elaborated type.
