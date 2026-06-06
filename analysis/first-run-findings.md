@@ -54,3 +54,23 @@ is inflated.
 Recommended near-term: (1) with a conservative tactic set, plus surfacing the residual open
 lemma prominently (it already is — `twin_pairs_unbounded` re-enters the corpus). The scalar
 becomes a floor, the artifact is the substance.
+
+## Resolution (implemented 2026-06-06)
+
+Both (1) and (4) shipped:
+
+- **Auto-closable discount** (`checker.py`): each discharged subgoal is re-tested against
+  Mathlib alone with a conservative finishing set (`omega`/`decide`/`norm_num`/`rfl`); if it
+  closes, the subgoal gets weight 0. The two twin-primes glue lemmas now weigh 0, so the
+  attempt scores an honest **0.000** instead of 0.667. Calibration and the tractable problem
+  still score 1.0 (a fully-discharged decomposition is solved regardless of weights).
+- **Artifact-first leaderboard** (`results.py`/`leaderboard.py`): the open tier headlines
+  *verified reductions* and the new open lemmas they surface, even at a scalar floor of 0.
+  The twin-primes row now reads "1 verified reduction, 1 new open lemma surfaced; score
+  floor 0.000" — honest about progress, while still crediting the (real, if minor) reduction
+  artifact and feeding the residual back into the corpus.
+
+Re-scored run: `runs/first-run-claude-code.json`. Open question still open: how to credit a
+reduction that genuinely makes the residual *easier* than the original (requires a hardness
+signal we don't yet have); the discount only removes free lemmas, it doesn't reward genuine
+simplification.
