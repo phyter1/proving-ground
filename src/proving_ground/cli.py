@@ -67,6 +67,20 @@ def _cmd_score(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_leaderboard(args: argparse.Namespace) -> int:
+    # Imported lazily so `score` works even if optional pieces change.
+    from proving_ground.leaderboard import render_markdown, write_site
+    from proving_ground.results import aggregate, load_results
+
+    board = aggregate(load_results(args.results))
+    if args.out:
+        write_site(board, args.out)
+        print(f"Wrote leaderboard site to {args.out}")
+    else:
+        print(render_markdown(board))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="proving-ground")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -74,6 +88,13 @@ def main(argv: list[str] | None = None) -> int:
     p_score = sub.add_parser("score", help="Score a decomposition from JSON.")
     p_score.add_argument("path", help="Path to JSON file, or '-' for stdin.")
     p_score.set_defaults(func=_cmd_score)
+
+    p_lb = sub.add_parser("leaderboard", help="Aggregate RunResults into a leaderboard.")
+    p_lb.add_argument("results", help="Path to a JSON array of RunResults.")
+    p_lb.add_argument(
+        "--out", help="Output dir for a static HTML site. If omitted, prints markdown."
+    )
+    p_lb.set_defaults(func=_cmd_leaderboard)
 
     args = parser.parse_args(argv)
     return args.func(args)

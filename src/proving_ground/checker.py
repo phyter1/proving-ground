@@ -99,19 +99,68 @@ class LeanInteractChecker(LeanChecker):
         self.mathlib_rev = mathlib_rev
         self._server = None  # lazily started AutoLeanServer
 
-    # The full implementation is deferred to the Lean-integration milestone; the steps
-    # are enumerated so the contract is unambiguous for whoever wires it (likely on ren4).
     def check(self, artifact: ProofArtifact) -> Decomposition:  # pragma: no cover
+        """Verify a submission against a live Lean toolchain.
+
+        The orchestration here is real and final: gather raw outputs from the toolchain,
+        then hand them to the tested, pure decision logic in :mod:`proving_ground.lean_checker`
+        (which carries the trust rules and is unit-tested without a toolchain). Only the
+        three toolchain-bound leaves below remain — they shell out to repl / Lean /
+        SafeVerify and are implemented in the Lean-integration milestone (runs on ren4 or
+        in the Docker image under ``docker/``).
+        """
+        from proving_ground.lean_checker import derive_decomposition, parse_repl_response
+
+        # 1. Confirm the target statement was not tampered with (SafeVerify gate C).
+        statement_matches = self._safe_verify_statement(artifact)
+
+        # 2. Check the root implication (subgoals -> target) and each subgoal node.
+        root_repl = parse_repl_response(self._run_repl(artifact.lean_source, node="root"))
+        root_axioms = self._print_axioms(artifact, node="root")
+
+        subgoal_specs: list[tuple[str, str, float]] = []
+        subgoal_repls = {}
+        subgoal_axioms = {}
+        for sg_id in artifact.subgoal_ids:
+            subgoal_specs.append((sg_id, self._statement_of(artifact, sg_id), 1.0))
+            subgoal_repls[sg_id] = parse_repl_response(
+                self._run_repl(artifact.lean_source, node=sg_id)
+            )
+            subgoal_axioms[sg_id] = self._print_axioms(artifact, node=sg_id)
+
+        # 3. Assemble the verdict via the tested decision logic.
+        return derive_decomposition(
+            target_id=artifact.target_id,
+            target_statement=artifact.target_statement,
+            subgoal_specs=subgoal_specs,
+            root_repl=root_repl,
+            subgoal_repls=subgoal_repls,
+            subgoal_axioms=subgoal_axioms,
+            statement_matches_target=statement_matches,
+            root_axioms=root_axioms,
+        )
+
+    # --- toolchain-bound leaves (next milestone; need a live Lean) --------------
+    def _run_repl(self, lean_source: str, *, node: str) -> dict:  # pragma: no cover
         raise NotImplementedError(
-            "LeanInteractChecker.check is the next milestone (Lean-backed verification on "
-            "the fleet). Contract:\n"
-            "  1. Start an AutoLeanServer with a pickled `import Mathlib` env.\n"
-            "  2. Compile artifact.lean_source; collect REPL messages + remaining sorries.\n"
-            "  3. statement_matches_target := SafeVerify type+value match vs frozen spec.\n"
-            "  4. For each subgoal: discharged := no error, not in remaining sorries,\n"
-            "     `#print axioms` ⊆ STANDARD_AXIOMS, survives `leanchecker --fresh`.\n"
-            "  5. root_implication_verified := (subgoals -> target) proof is sorry-free.\n"
-            "  6. axioms_clean := every discharged node passes the axiom allowlist."
+            "Start an AutoLeanServer with a pickled `import Mathlib` env, submit the "
+            "source, and return the raw repl JSON (messages + sorries + env)."
+        )
+
+    def _print_axioms(self, artifact: ProofArtifact, *, node: str) -> frozenset[str]:  # pragma: no cover  # noqa: E501
+        raise NotImplementedError(
+            "Run `#print axioms <node>` and `leanchecker --fresh`, return the axiom set."
+        )
+
+    def _safe_verify_statement(self, artifact: ProofArtifact) -> bool:  # pragma: no cover
+        raise NotImplementedError(
+            "Run SafeVerify to confirm the submitted target type+value is byte-identical "
+            "to the frozen spec (blocks goal tampering)."
+        )
+
+    def _statement_of(self, artifact: ProofArtifact, subgoal_id: str) -> str:  # pragma: no cover  # noqa: E501
+        raise NotImplementedError(
+            "Extract the declared Lean type of the given subgoal from the submission."
         )
 
 

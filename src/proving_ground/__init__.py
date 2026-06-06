@@ -15,6 +15,7 @@ from proving_ground.models import (
     Subgoal,
     Tier,
 )
+from proving_ground.results import Leaderboard, ModelStanding, TierStats, aggregate
 from proving_ground.scoring import STANDARD_AXIOMS, score_decomposition
 
 __all__ = [
@@ -27,6 +28,10 @@ __all__ = [
     "Tier",
     "STANDARD_AXIOMS",
     "score_decomposition",
+    "Leaderboard",
+    "ModelStanding",
+    "TierStats",
+    "aggregate",
 ]
 
 __version__ = "0.1.0"

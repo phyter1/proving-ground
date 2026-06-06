@@ -44,16 +44,38 @@ The corpus of open problems already exists (we reuse DeepMind's `formal-conjectu
 
 ## Status
 
-Early. The scoring metric — the core IP — is implemented and tested and runs with no Lean
-toolchain required. The Lean-backed checker and the leaderboard are next, in that order.
+The full pipeline is scaffolded and tested end to end — **105 tests, no Lean toolchain
+required to run them.** The one remaining toolchain-bound piece is the live Lean
+verification leaves (clearly marked in `checker.py`), which run on the fleet / in Docker.
 
 ```
 src/proving_ground/
-  models.py     # pure data: Subgoal, Decomposition, Score, Tier
-  scoring.py    # the partial-credit metric (fully tested, no Lean needed)
-  checker.py    # Lean integration boundary (repl + SafeVerify), gated on toolchain
-docs/SCORING.md # the metric, written down as spec
-tests/          # acceptance tests for the metric
+  models.py       # pure data: Subgoal, Decomposition, Score, Problem, RunResult, Tier
+  scoring.py      # the partial-credit metric (fully tested, no Lean needed)
+  lean_checker.py # repl/axiom parsing + verdict logic (tested vs canned Lean output)
+  checker.py      # Lean integration boundary (repl + SafeVerify); orchestration done,
+                  #   subprocess leaves stubbed for the on-fleet milestone
+  extract.py      # turn an LLM response into a ProofArtifact
+  runner.py       # provider-agnostic model runner (fleet router + cloud, via httpx)
+  corpus.py       # ingest formal-conjectures / SorryDB; self-renew from reductions
+  results.py      # aggregate RunResults per tier (never blended)
+  leaderboard.py  # render markdown + self-contained HTML leaderboard
+  cli.py          # `score` and `leaderboard` commands
+docs/SCORING.md   # the metric, written down as spec
+tests/            # acceptance tests for every module
+```
+
+The flow: `corpus` supplies a `Problem` → `runner`/`extract` get a `ProofArtifact` from a
+model → `checker` (on the fleet) verifies it into a `Decomposition` → `scoring` assigns a
+`Score` → leftover open lemmas `corpus.renew_from_decomposition` back into the corpus →
+`results`/`leaderboard` rank the field. Everything except the live Lean verification is
+done and tested.
+
+### CLI
+
+```bash
+proving-ground score problems/example-reduction.json   # apply the metric to a verdict
+proving-ground leaderboard runs.json --out site/        # build the leaderboard
 ```
 
 ### Develop
