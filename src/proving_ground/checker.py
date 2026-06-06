@@ -152,10 +152,12 @@ class LeanInteractChecker(LeanChecker):
         from lean_interact import Command
 
         self._ensure_server()
-        server, env = self._server, self._mathlib_env
+        server = self._server
 
-        # 1. Elaborate the whole submission.
-        server.run(Command(cmd=artifact.lean_source, env=env))
+        # 1. Elaborate the whole submission. The returned env holds the new declarations;
+        # every subsequent query must run against THAT env, not the base Mathlib one.
+        submission = server.run(Command(cmd=artifact.lean_source, env=self._mathlib_env))
+        env = submission.env
 
         # 2. Per-subgoal axiom audit + elaborated type.
         subgoals: list[Subgoal] = []
