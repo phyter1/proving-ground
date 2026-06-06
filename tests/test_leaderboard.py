@@ -73,11 +73,31 @@ def test_markdown_mentions_partial_credit_metric():
     assert "partial credit" in md.lower()
 
 
-def test_markdown_highlights_open_contribution():
+def test_markdown_headlines_open_reductions():
     md = render_markdown(_board())
-    # Headline section calls out the open-tier verified reductions; nonzero gets a star.
-    assert "Open-tier verified reductions" in md
+    # Open tier headlines verified reductions, not a partial scalar.
+    assert "Open-tier results" in md
+    assert "verified reduction" in md.lower()
+    assert "Verified reductions" in md  # open-tier table column
+
+
+def test_open_tier_suppresses_partial_scalar():
+    # A gamed open result (0.8) must not surface its scalar anywhere — partial progress on
+    # an open problem is not reported. See analysis/first-run-findings.md.
+    board = aggregate([_result("gamer", "op-1", Tier.OPEN, 0.8, open_ids=("hard",))])
+    md = render_markdown(board)
+    html_out = render_html(board)
+    assert "0.800" not in md
+    assert "0.800" not in html_out
+    # but the reduction artifact is still surfaced
+    assert "verified reduction" in md.lower()
+
+
+def test_open_tier_stars_actual_solve():
+    board = aggregate([_result("solver", "op-1", Tier.OPEN, 1.0)])
+    md = render_markdown(board)
     assert "⭐" in md
+    assert "solved" in md.lower()
 
 
 def test_markdown_empty_board():
@@ -107,10 +127,15 @@ def test_html_has_each_tier_and_model():
     assert "model-b" in h
 
 
-def test_html_highlights_open_contribution():
+def test_html_headlines_open_reductions():
     h = render_html(_board())
-    assert "Open-tier verified reductions" in h
-    assert "contrib" in h  # the highlighted row / section class
+    assert "Open-tier results" in h
+    assert "Verified reductions" in h  # open-tier table column
+
+
+def test_html_stars_actual_open_solve():
+    h = render_html(aggregate([_result("solver", "op-1", Tier.OPEN, 1.0)]))
+    assert "contrib" in h  # highlighted row class
     assert "⭐" in h
 
 

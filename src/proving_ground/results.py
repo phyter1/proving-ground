@@ -172,6 +172,23 @@ class Leaderboard:
 
         return sorted(entrants, key=key)
 
+    def rank_open(self) -> list[ModelStanding]:
+        """Rank the open tier by (solved desc, verified reductions desc, lemmas surfaced).
+
+        The open tier deliberately does NOT rank by partial score: a partial scalar on a
+        genuinely open problem is not a real quantity and is gameable by padding a
+        decomposition with many easy-but-not-auto-closable lemmas (see
+        analysis/first-run-findings.md). What counts is solving it (binary) or producing
+        verified reductions that surface new open lemmas.
+        """
+        entrants = [s for s in self.standings if Tier.OPEN in s.per_tier]
+
+        def key(s: ModelStanding) -> tuple:
+            st = s.per_tier[Tier.OPEN]
+            return (-st.solved, -st.verified_reductions, -st.open_lemmas_surfaced, s.model)
+
+        return sorted(entrants, key=key)
+
     def open_contributors(self) -> list[ModelStanding]:
         """Models with a nonzero ``open``-tier score, best-first — the headline."""
         return [s for s in self.rank(Tier.OPEN) if s.open_contribution()]

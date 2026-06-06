@@ -1,0 +1,329 @@
+[
+  {
+    "model": "claude-code/opus",
+    "problem_id": "calib-add-identities",
+    "tier": "solved_recent",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 0.0,
+      "total_weight": 0.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/opus",
+    "problem_id": "calib-mul-identities",
+    "tier": "solved_recent",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 0.0,
+      "total_weight": 0.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/opus",
+    "problem_id": "tractable-consecutive",
+    "tier": "weakly_open",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 1.0,
+      "total_weight": 1.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/opus",
+    "problem_id": "tractable-even-or-odd",
+    "tier": "weakly_open",
+    "score": {
+      "value": 0.0,
+      "kind": "none",
+      "discharged_weight": 2.0,
+      "total_weight": 2.0,
+      "remaining_open_ids": [],
+      "rationale": "Axiom cleanliness gate failed: a discharged node depends on a non-standard axiom (allowed: ['Classical.choice', 'Quot.sound', 'propext']). Possible sorry-laundering or native_decide exploit."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/opus",
+    "problem_id": "tractable-even-product",
+    "tier": "weakly_open",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 1.0,
+      "total_weight": 1.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/opus",
+    "problem_id": "twin-primes",
+    "tier": "open",
+    "score": {
+      "value": 0.5,
+      "kind": "reduction",
+      "discharged_weight": 1.0,
+      "total_weight": 2.0,
+      "remaining_open_ids": [
+        "twin_primes_infinite"
+      ],
+      "rationale": "Verified reduction: 1/2 subgoal weight discharged; 1 open lemma(s) remain and re-enter the corpus as new problems."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/opus",
+    "problem_id": "goldbach",
+    "tier": "open",
+    "score": {
+      "value": 0.6666666666666666,
+      "kind": "reduction",
+      "discharged_weight": 2.0,
+      "total_weight": 3.0,
+      "remaining_open_ids": [
+        "goldbach_ge_six"
+      ],
+      "rationale": "Verified reduction: 2/3 subgoal weight discharged; 1 open lemma(s) remain and re-enter the corpus as new problems."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/sonnet",
+    "problem_id": "calib-add-identities",
+    "tier": "solved_recent",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 0.0,
+      "total_weight": 0.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/sonnet",
+    "problem_id": "calib-mul-identities",
+    "tier": "solved_recent",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 0.0,
+      "total_weight": 0.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/sonnet",
+    "problem_id": "tractable-consecutive",
+    "tier": "weakly_open",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 1.0,
+      "total_weight": 1.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/sonnet",
+    "problem_id": "tractable-even-or-odd",
+    "tier": "weakly_open",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 2.0,
+      "total_weight": 2.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/sonnet",
+    "problem_id": "tractable-even-product",
+    "tier": "weakly_open",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 3.0,
+      "total_weight": 3.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/sonnet",
+    "problem_id": "twin-primes",
+    "tier": "open",
+    "score": {
+      "value": 0.5,
+      "kind": "reduction",
+      "discharged_weight": 1.0,
+      "total_weight": 2.0,
+      "remaining_open_ids": [
+        "twin_prime_successor"
+      ],
+      "rationale": "Verified reduction: 1/2 subgoal weight discharged; 1 open lemma(s) remain and re-enter the corpus as new problems."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/sonnet",
+    "problem_id": "goldbach",
+    "tier": "open",
+    "score": {
+      "value": 0.6666666666666666,
+      "kind": "reduction",
+      "discharged_weight": 2.0,
+      "total_weight": 3.0,
+      "remaining_open_ids": [
+        "goldbach_hard_case"
+      ],
+      "rationale": "Verified reduction: 2/3 subgoal weight discharged; 1 open lemma(s) remain and re-enter the corpus as new problems."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/haiku",
+    "problem_id": "calib-add-identities",
+    "tier": "solved_recent",
+    "score": {
+      "value": 0.0,
+      "kind": "none",
+      "discharged_weight": 0.0,
+      "total_weight": 0.0,
+      "remaining_open_ids": [],
+      "rationale": "Statement integrity gate failed: submitted target does not match the frozen spec (possible goal tampering)."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/haiku",
+    "problem_id": "calib-mul-identities",
+    "tier": "solved_recent",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 0.0,
+      "total_weight": 0.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/haiku",
+    "problem_id": "tractable-consecutive",
+    "tier": "weakly_open",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 1.0,
+      "total_weight": 1.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/haiku",
+    "problem_id": "tractable-even-or-odd",
+    "tier": "weakly_open",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 2.0,
+      "total_weight": 2.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/haiku",
+    "problem_id": "tractable-even-product",
+    "tier": "weakly_open",
+    "score": {
+      "value": 1.0,
+      "kind": "solved",
+      "discharged_weight": 2.0,
+      "total_weight": 2.0,
+      "remaining_open_ids": [],
+      "rationale": "Complete proof: all subgoals discharged and (subgoals -> target) verified."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/haiku",
+    "problem_id": "twin-primes",
+    "tier": "open",
+    "score": {
+      "value": 0.0,
+      "kind": "none",
+      "discharged_weight": 0,
+      "total_weight": 1.0,
+      "remaining_open_ids": [
+        "twin_primes_infinite"
+      ],
+      "rationale": "Statement integrity gate failed: submitted target does not match the frozen spec (possible goal tampering)."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  },
+  {
+    "model": "claude-code/haiku",
+    "problem_id": "goldbach",
+    "tier": "open",
+    "score": {
+      "value": 0.8,
+      "kind": "reduction",
+      "discharged_weight": 4.0,
+      "total_weight": 5.0,
+      "remaining_open_ids": [
+        "goldbach_general"
+      ],
+      "rationale": "Verified reduction: 4/5 subgoal weight discharged; 1 open lemma(s) remain and re-enter the corpus as new problems."
+    },
+    "timestamp": "2026-06-06T15:00:00Z",
+    "artifact_ref": null
+  }
+]

@@ -17,7 +17,7 @@ import html
 from pathlib import Path
 
 from proving_ground.models import Tier
-from proving_ground.results import Leaderboard, ModelStanding, TierStats
+from proving_ground.results import Leaderboard
 
 _TIER_LABEL: dict[Tier, str] = {
     Tier.SOLVED_RECENT: "solved_recent",
@@ -35,15 +35,18 @@ _TIER_BLURB: dict[Tier, str] = {
         "doing something real."
     ),
     Tier.OPEN: (
-        "Genuinely open conjectures. A nonzero score here is a contribution to "
-        "mathematics."
+        "Genuinely open conjectures. No partial scalar is reported here — partial progress "
+        "on an unsolved problem is not a real, ungameable quantity. We report solved "
+        "(binary) and verified reductions that surface new open lemmas. Solving one is a "
+        "contribution to mathematics."
     ),
 }
 
 _METRIC_LINE = (
     "Metric: kernel-verified partial credit = discharged subgoal weight / total weight "
-    "(0 = no creditable progress, 1.0 = a complete kernel-checked proof). Reported per "
-    "tier — never blended."
+    "(0 = none, 1.0 = a complete kernel-checked proof). Reported per tier — never blended. "
+    "The open tier reports solved/reductions only, not a partial scalar (see the open-tier "
+    "note for why)."
 )
 
 
@@ -61,22 +64,21 @@ def render_markdown(leaderboard: Leaderboard) -> str:
 
     artifacts = leaderboard.open_reduction_artifacts()
     if artifacts:
-        lines.append("## 🏆 Open-tier verified reductions")
+        lines.append("## 🏆 Open-tier results")
         lines.append("")
         lines.append(
-            "**Kernel-checked reductions of genuinely open problems.** The substance is the "
-            "reduction artifact and the new, smaller open lemmas it surfaces (which re-enter "
-            "the corpus) — the score is a conservative floor, not the headline. A scalar "
-            "above 0 means a non-trivial lemma was also discharged:"
+            "**Genuinely open conjectures.** No partial scalar — solving one is binary and "
+            "would be historic. What's reported is verified reductions and the new, smaller "
+            "open lemmas they surface (which re-enter the corpus). ⭐ marks an actual solve:"
         )
         lines.append("")
         for s in artifacts:
             st = s.per_tier[Tier.OPEN]
-            mark = "⭐ " if st.best_score > 0.0 else ""
+            mark = "⭐ " if st.solved > 0 else ""
+            solved_txt = f"{st.solved} solved, " if st.solved else ""
             lines.append(
-                f"- {mark}**{s.model}** — {st.verified_reductions} verified reduction(s), "
-                f"{st.open_lemmas_surfaced} new open lemma(s) surfaced; "
-                f"score floor `{_fmt(st.best_score)}`"
+                f"- {mark}**{s.model}** — {solved_txt}{st.verified_reductions} verified "
+                f"reduction(s), {st.open_lemmas_surfaced} new open lemma(s) surfaced"
             )
         lines.append("")
 
@@ -90,21 +92,30 @@ def render_markdown(leaderboard: Leaderboard) -> str:
         lines.append("")
         lines.append(f"_{_TIER_BLURB[tier]}_")
         lines.append("")
-        lines.append(
-            "| Rank | Model | Attempted | Solved | Partial | Mean | Best | "
-            "Open lemmas surfaced |"
-        )
-        lines.append("|---:|---|---:|---:|---:|---:|---:|---:|")
-        for rank, s in enumerate(leaderboard.rank(tier), start=1):
-            st = s.per_tier[tier]
-            model = s.model
-            if tier is Tier.OPEN and st.best_score > 0.0:
-                model = f"⭐ {model}"
+        if tier is Tier.OPEN:
             lines.append(
-                f"| {rank} | {model} | {st.attempted} | {st.solved} | {st.partial} | "
-                f"{_fmt(st.mean_score)} | {_fmt(st.best_score)} | "
-                f"{st.open_lemmas_surfaced} |"
+                "| Rank | Model | Attempted | Solved | Verified reductions | "
+                "Open lemmas surfaced |"
             )
+            lines.append("|---:|---|---:|---:|---:|---:|")
+            for rank, s in enumerate(leaderboard.rank_open(), start=1):
+                st = s.per_tier[tier]
+                model = f"⭐ {s.model}" if st.solved > 0 else s.model
+                lines.append(
+                    f"| {rank} | {model} | {st.attempted} | {st.solved} | "
+                    f"{st.verified_reductions} | {st.open_lemmas_surfaced} |"
+                )
+        else:
+            lines.append(
+                "| Rank | Model | Attempted | Solved | Partial | Mean | Best |"
+            )
+            lines.append("|---:|---|---:|---:|---:|---:|---:|")
+            for rank, s in enumerate(leaderboard.rank(tier), start=1):
+                st = s.per_tier[tier]
+                lines.append(
+                    f"| {rank} | {s.model} | {st.attempted} | {st.solved} | {st.partial} | "
+                    f"{_fmt(st.mean_score)} | {_fmt(st.best_score)} |"
+                )
         lines.append("")
 
     return "\n".join(lines) + "\n"
@@ -144,9 +155,9 @@ code { background: #161b22; padding: .1rem .35rem; border-radius: 4px; font-size
 footer { margin-top: 2.5rem; color: #6e7681; font-size: .8rem; }
 """
 
-_TABLE_HEADERS = (
-    "Rank", "Model", "Attempted", "Solved", "Partial", "Mean", "Best",
-    "Open lemmas surfaced",
+_CLOSED_HEADERS = ("Rank", "Model", "Attempted", "Solved", "Partial", "Mean", "Best")
+_OPEN_HEADERS = (
+    "Rank", "Model", "Attempted", "Solved", "Verified reductions", "Open lemmas surfaced",
 )
 
 
@@ -154,30 +165,32 @@ def _esc(text: str) -> str:
     return html.escape(text, quote=True)
 
 
-def _html_row(rank: int, s: ModelStanding, st: TierStats, *, contrib: bool) -> str:
-    cls = ' class="contrib"' if contrib else ""
-    star = "⭐ " if contrib else ""
-    cells = [
-        str(rank),
-        f"{star}{_esc(s.model)}",
-        str(st.attempted),
-        str(st.solved),
-        str(st.partial),
-        _fmt(st.mean_score),
-        _fmt(st.best_score),
-        str(st.open_lemmas_surfaced),
-    ]
-    tds = "".join(f"<td>{c}</td>" for c in cells)
-    return f"      <tr{cls}>{tds}</tr>"
+def _tds(cells: list[str], *, cls: str = "") -> str:
+    return f"      <tr{cls}>" + "".join(f"<td>{c}</td>" for c in cells) + "</tr>"
 
 
 def _html_tier_section(leaderboard: Leaderboard, tier: Tier) -> str:
-    head = "".join(f"<th>{_esc(h)}</th>" for h in _TABLE_HEADERS)
     rows: list[str] = []
-    for rank, s in enumerate(leaderboard.rank(tier), start=1):
-        st = s.per_tier[tier]
-        contrib = tier is Tier.OPEN and st.best_score > 0.0
-        rows.append(_html_row(rank, s, st, contrib=contrib))
+    if tier is Tier.OPEN:
+        headers = _OPEN_HEADERS
+        for rank, s in enumerate(leaderboard.rank_open(), start=1):
+            st = s.per_tier[tier]
+            solved = st.solved > 0
+            cls = ' class="contrib"' if solved else ""
+            star = "⭐ " if solved else ""
+            rows.append(_tds([
+                str(rank), f"{star}{_esc(s.model)}", str(st.attempted), str(st.solved),
+                str(st.verified_reductions), str(st.open_lemmas_surfaced),
+            ], cls=cls))
+    else:
+        headers = _CLOSED_HEADERS
+        for rank, s in enumerate(leaderboard.rank(tier), start=1):
+            st = s.per_tier[tier]
+            rows.append(_tds([
+                str(rank), _esc(s.model), str(st.attempted), str(st.solved),
+                str(st.partial), _fmt(st.mean_score), _fmt(st.best_score),
+            ]))
+    head = "".join(f"<th>{_esc(h)}</th>" for h in headers)
     rows_html = "\n".join(rows)
     return (
         f"    <section>\n"
@@ -198,20 +211,21 @@ def _html_headline(leaderboard: Leaderboard) -> str:
     items: list[str] = []
     for s in artifacts:
         st = s.per_tier[Tier.OPEN]
-        mark = "⭐ " if st.best_score > 0.0 else ""
+        mark = "⭐ " if st.solved > 0 else ""
+        solved_txt = f"{st.solved} solved, " if st.solved else ""
         items.append(
-            f"        <li>{mark}<strong>{_esc(s.model)}</strong> — "
+            f"        <li>{mark}<strong>{_esc(s.model)}</strong> — {solved_txt}"
             f"{st.verified_reductions} verified reduction(s), "
-            f"{st.open_lemmas_surfaced} new open lemma(s) surfaced; "
-            f"score floor <code>{_fmt(st.best_score)}</code></li>"
+            f"{st.open_lemmas_surfaced} new open lemma(s) surfaced</li>"
         )
     items_html = "\n".join(items)
     return (
         '    <section class="headline">\n'
-        "      <h2>🏆 Open-tier verified reductions</h2>\n"
-        "      <p>Kernel-checked reductions of genuinely open problems. The substance is the "
-        "reduction artifact and the new, smaller open lemmas it surfaces (re-entering the "
-        "corpus); the score is a conservative floor, not the headline.</p>\n"
+        "      <h2>🏆 Open-tier results</h2>\n"
+        "      <p>Genuinely open conjectures — no partial scalar (partial progress on an "
+        "unsolved problem is not a real, ungameable quantity). Reported: verified reductions "
+        "and the new open lemmas they surface (re-entering the corpus). ⭐ marks an actual "
+        "solve.</p>\n"
         f"      <ul>\n{items_html}\n      </ul>\n"
         "    </section>"
     )
