@@ -8,6 +8,8 @@ interfaces in :mod:`proving_ground.checker`.
 
 from proving_ground.models import (
     Decomposition,
+    Problem,
+    RunResult,
     Score,
     ScoreKind,
     Subgoal,
@@ -17,6 +19,8 @@ from proving_ground.scoring import STANDARD_AXIOMS, score_decomposition
 
 __all__ = [
     "Decomposition",
+    "Problem",
+    "RunResult",
     "Score",
     "ScoreKind",
     "Subgoal",

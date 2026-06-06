@@ -99,3 +99,58 @@ class Score:
     total_weight: float
     remaining_open_ids: tuple[str, ...]
     rationale: str
+
+
+@dataclass(frozen=True)
+class Problem:
+    """A benchmark problem: an open (or recent-solved) statement to attack.
+
+    This is the unit a model is asked to make progress on, and the unit a corpus source
+    (formal-conjectures, SorryDB, or a remaining-open lemma fed back from a prior run)
+    is normalized into.
+
+    Attributes:
+        id: Stable unique identifier.
+        statement: The frozen Lean statement (the spec a submission must match).
+        tier: Difficulty / contamination tier.
+        source: Provenance, e.g. "formal-conjectures", "sorrydb", "self-renewed".
+        title: Human-readable name.
+        references: External links/citations (e.g. erdosproblems.com entry).
+        preamble: Lean imports/opens/defs a submission may assume (e.g. "import Mathlib").
+        proved_after: ISO date a known proof first existed (for contamination windowing
+            of the solved_recent tier); None for genuinely open problems.
+        metadata: Free-form extra fields from the source.
+    """
+
+    id: str
+    statement: str
+    tier: Tier
+    source: str
+    title: str = ""
+    references: tuple[str, ...] = field(default_factory=tuple)
+    preamble: str = "import Mathlib"
+    proved_after: str | None = None
+    metadata: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class RunResult:
+    """One model's scored attempt at one problem — the leaderboard's row.
+
+    Attributes:
+        model: Identifier of the model/system evaluated (e.g. "claude-opus-4-8",
+            "fleet:ren4/qwen3.5:9b").
+        problem_id: The Problem attempted.
+        tier: The problem's tier (denormalized for per-tier aggregation).
+        score: The Score the metric assigned.
+        timestamp: ISO-8601 time the attempt was scored (caller-supplied; the harness
+            does not invent clocks).
+        artifact_ref: Optional pointer to the stored raw submission (path/URL/hash).
+    """
+
+    model: str
+    problem_id: str
+    tier: Tier
+    score: Score
+    timestamp: str
+    artifact_ref: str | None = None

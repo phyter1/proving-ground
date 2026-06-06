@@ -7,7 +7,9 @@ requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
 authors = [{ name = "phyter1" }]
 keywords = ["llm", "benchmark", "lean", "formal-methods", "theorem-proving", "open-problems"]
-dependencies = []
+dependencies = [
+    "httpx>=0.27",  # model runner: OpenAI-compatible fleet router + cloud APIs
+]
 
 [project.optional-dependencies]
 # The Lean-backed checker. Only needed where a Lean toolchain exists (the fleet / Docker),
