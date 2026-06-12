@@ -105,6 +105,7 @@ class OpenAICompatibleRunner(ModelRunner):
             "model": self.model,
             "messages": messages,
             "temperature": self.temperature,
+            "stream": False,  # benchmark use: always non-streaming
             **self.extra_body,
         }
         try:
