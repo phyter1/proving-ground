@@ -18,6 +18,12 @@ from proving_ground.models import (
 from proving_ground.harness import BenchmarkRun, run_benchmark
 from proving_ground.results import Leaderboard, ModelStanding, TierStats, aggregate
 from proving_ground.scoring import STANDARD_AXIOMS, score_decomposition
+from proving_ground.hardness import (
+    ConsensusResult,
+    compute_consensus,
+    novelty_weight,
+    pairwise_jaccard,
+)
 
 __all__ = [
     "Decomposition",
@@ -35,6 +41,10 @@ __all__ = [
     "aggregate",
     "BenchmarkRun",
     "run_benchmark",
+    "ConsensusResult",
+    "compute_consensus",
+    "novelty_weight",
+    "pairwise_jaccard",
 ]
 
 __version__ = "0.1.0"
