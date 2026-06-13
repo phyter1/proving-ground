@@ -6,6 +6,7 @@ import pytest
 
 from proving_ground.hardness import (
     ConsensusResult,
+    _is_target_echo,
     _normalize_statement,
     _token_containment,
     compute_consensus,
@@ -21,7 +22,7 @@ THEOREM = "∀ n : ℕ, Even n ∨ Odd n"
 # --- helpers ----------------------------------------------------------------
 
 
-def _decomp(target_id: str, statements: list[str], target_statement: str = "C") -> Decomposition:
+def _decomp(target_id: str, statements: list[str], target_statement: str = "TARGET_GOAL") -> Decomposition:
     """Minimal Decomposition passing all hard gates."""
     return Decomposition(
         target_id=target_id,
@@ -152,6 +153,34 @@ def test_token_containment_empty_subgoal():
     assert _token_containment("", "∀ N ∃ p") == pytest.approx(1.0)
 
 
+# --- _is_target_echo --------------------------------------------------------
+
+
+def test_is_target_echo_exact_match():
+    assert _is_target_echo(THEOREM, THEOREM) is True
+
+
+def test_is_target_echo_normalized_match():
+    # Dropping the ∀ wrapper still echoes the target.
+    assert _is_target_echo("Even n ∨ Odd n", "∀ n : ℕ, Even n ∨ Odd n") is True
+
+
+def test_is_target_echo_near_degenerate_containment_not_flagged():
+    # _is_target_echo does NOT use token containment (unlike is_degenerate).
+    # A near-degenerate weakening of the target is not caught here — only exact
+    # and normalized-exact matches are filtered to avoid false positives on
+    # short lemma statements that legitimately share tokens with longer targets.
+    target = "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)"
+    subgoal = "∃ p : ℕ, Nat.Prime p ∧ Nat.Prime (p + 2)"
+    assert _is_target_echo(subgoal, target) is False
+
+
+def test_is_target_echo_genuine_subgoal_not_flagged():
+    # A real lemma introduces novel vocabulary.
+    assert _is_target_echo("Even 0 ∨ Odd 0", THEOREM) is False
+    assert _is_target_echo("∀ n m : ℕ, Odd (n + m) → Even n ∨ Even m", THEOREM) is False
+
+
 # --- compute_consensus ------------------------------------------------------
 
 
@@ -277,6 +306,41 @@ def test_near_degenerate_filtered_leaves_one_real_returns_none():
     assert r.hardness_score is None
     assert "N < p" in r.novel_statements
     assert "Nat.Prime (p + 2)" in r.novel_statements
+
+
+def test_multi_subgoal_with_target_echo_filters_echo():
+    # Observed: Granite produced [target_echo, real_subgoal].
+    # The target echo must be removed from statement sets before consensus.
+    # Remaining: 1 degenerate (Qwen echo) + 1 real after filtering (Granite).
+    # Only 1 real decomposition → consensus undefined.
+    granite = _decomp(
+        "conj-1",
+        [THEOREM, "∀ n m : ℕ, Odd (n + m) → Even n ∨ Even m"],
+        target_statement=THEOREM,
+    )
+    qwen = _decomp("conj-1", [THEOREM], target_statement=THEOREM)  # classic degenerate
+    r = compute_consensus("conj-1", [qwen, granite])
+    assert r.n_degenerate == 1  # only qwen (single-subgoal echo) is degenerate
+    assert r.consensus_score is None  # only 1 real model after filtering granite's echo
+    assert r.hardness_score is None
+    # Target echo must NOT appear as novel
+    assert THEOREM not in r.novel_statements
+    # Granite's real subgoal IS novel
+    assert "∀ n m : ℕ, Odd (n + m) → Even n ∨ Even m" in r.novel_statements
+
+
+def test_multi_subgoal_target_echo_filtered_before_jaccard():
+    # Two non-degenerate models each include the target alongside distinct real subgoals.
+    # After filtering the echo, their real subgoals are disjoint → hardness=1.
+    d1 = _decomp("conj-1", [THEOREM, "Even 0 ∨ Odd 0"], target_statement=THEOREM)
+    d2 = _decomp("conj-1", [THEOREM, "Even (S k) ∨ Odd (S k)"], target_statement=THEOREM)
+    r = compute_consensus("conj-1", [d1, d2])
+    assert r.n_degenerate == 0  # both have 2 subgoals, is_degenerate returns False
+    assert r.consensus_score == pytest.approx(0.0)  # real subgoals fully disjoint
+    assert r.hardness_score == pytest.approx(1.0)
+    assert THEOREM not in r.novel_statements
+    assert "Even 0 ∨ Odd 0" in r.novel_statements
+    assert "Even (S k) ∨ Odd (S k)" in r.novel_statements
 
 
 # --- novelty_weight ---------------------------------------------------------

@@ -52,12 +52,39 @@ def _normalize_statement(stmt: str) -> str:
     return stripped if stripped else stmt.strip()
 
 
+def _is_target_echo(stmt: str, target: str) -> bool:
+    """Return True if *stmt* is an exact or normalized-exact restatement of *target*.
+
+    Used to filter individual target-echoing subgoals from multi-subgoal
+    decompositions before Jaccard computation — a model that lists the target
+    itself as one of its lemmas adds no search-space signal for that subgoal.
+
+    Unlike :func:`is_degenerate`, does NOT use token containment: short lemma
+    statements legitimately share tokens with longer targets, so containment
+    would produce false positives for genuine subgoals in multi-subgoal
+    decompositions. Exact and normalized-exact matching is sufficient to catch
+    the observed failure mode (model outputs the theorem verbatim as one of its
+    claimed lemmas).
+    """
+    raw = stmt.strip()
+    raw_target = target.strip()
+    if raw == raw_target:
+        return True
+    return _normalize_statement(raw) == _normalize_statement(raw_target)
+
+
 def _statement_set(d: Decomposition) -> frozenset[str]:
-    return frozenset(sg.statement for sg in d.subgoals)
+    return frozenset(
+        sg.statement for sg in d.subgoals
+        if not _is_target_echo(sg.statement, d.target_statement)
+    )
 
 
 def _normalized_statement_set(d: Decomposition) -> frozenset[str]:
-    return frozenset(_normalize_statement(sg.statement) for sg in d.subgoals)
+    return frozenset(
+        _normalize_statement(sg.statement) for sg in d.subgoals
+        if not _is_target_echo(sg.statement, d.target_statement)
+    )
 
 
 def _token_containment(subgoal_stmt: str, target_stmt: str) -> float:
