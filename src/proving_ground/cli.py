@@ -87,6 +87,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
 
     from proving_ground.collector import collect
     from proving_ground.corpus import load_corpus
+    from proving_ground.hardness import is_degenerate
     from proving_ground.runner import OpenAICompatibleRunner
 
     corpus = load_corpus(args.corpus)
@@ -112,6 +113,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
     out: dict = {
         "problem_id": result.problem_id,
         "n_models": len(result.entries),
+        "n_degenerate": result.consensus.n_degenerate if result.consensus is not None else 0,
         "n_errors": len(result.errors),
         "consensus": (
             {
@@ -126,6 +128,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
             {
                 "model": name,
                 "subgoal_statements": [sg.statement for sg in decomp.subgoals],
+                "is_degenerate": is_degenerate(decomp),
             }
             for name, decomp in result.entries
         ],
