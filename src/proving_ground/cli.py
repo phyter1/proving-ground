@@ -102,6 +102,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
             m["model"],
             base_url=m.get("base_url", "http://ren3.local:3000/v1"),
             api_key=m.get("api_key"),
+            temperature=float(m.get("temperature", 0.0)),
         )
         for m in config["models"]
     ]

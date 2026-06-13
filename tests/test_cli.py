@@ -100,3 +100,54 @@ def test_collect_output_includes_n_degenerate(tmp_path):
     assert "entries" in data
     for entry in data["entries"]:
         assert "is_degenerate" in entry
+
+
+def test_collect_temperature_forwarded(tmp_path):
+    """temperature in model config must be passed through to the runner."""
+    corpus_path = Path(__file__).parent.parent / "problems" / "benchmark-v1.json"
+    target = "∀ n : ℕ, Even n ∨ Odd n"
+    resp = _model_response_for_cli(
+        [("base", "Even 0 ∨ Odd 0"), ("step", "Even (S k) ∨ Odd (S k)")], target
+    )
+
+    seen_temps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        seen_temps.append(payload.get("temperature"))
+        return httpx.Response(
+            200,
+            json={
+                "id": "chatcmpl-test",
+                "choices": [{"message": {"role": "assistant", "content": resp}}],
+            },
+        )
+
+    config = {
+        "models": [
+            {
+                "name": "hot-model",
+                "model": "test-hot",
+                "base_url": "http://localhost:9999/v1",
+                "temperature": 0.7,
+            }
+        ]
+    }
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(config))
+
+    with patch("proving_ground.runner.httpx.Client") as mock_client_cls:
+        mock_client_cls.return_value.post.side_effect = lambda url, **kw: handler(
+            httpx.Request("POST", url, content=json.dumps(kw.get("json", {})).encode())
+        )
+        rc = main(
+            [
+                "collect",
+                "--corpus", str(corpus_path),
+                "--problem-id", "tractable-even-or-odd",
+                "--config", str(config_path),
+            ]
+        )
+
+    assert rc == 0
+    assert seen_temps == [0.7]
