@@ -15,7 +15,7 @@ from proving_ground.models import (
     Subgoal,
     Tier,
 )
-from proving_ground.harness import BenchmarkRun, run_benchmark
+from proving_ground.harness import BenchmarkRun, CollectionRun, collect_decompositions, run_benchmark
 from proving_ground.results import Leaderboard, ModelStanding, TierStats, aggregate
 from proving_ground.scoring import STANDARD_AXIOMS, score_decomposition
 from proving_ground.hardness import (
@@ -40,6 +40,8 @@ __all__ = [
     "TierStats",
     "aggregate",
     "BenchmarkRun",
+    "CollectionRun",
+    "collect_decompositions",
     "run_benchmark",
     "ConsensusResult",
     "compute_consensus",
