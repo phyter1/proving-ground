@@ -27,6 +27,22 @@ def _statement_set(d: Decomposition) -> frozenset[str]:
     return frozenset(sg.statement for sg in d.subgoals)
 
 
+def is_degenerate(decomp: Decomposition) -> bool:
+    """Return True if the decomposition is a tautological non-decomposition.
+
+    A model that outputs the theorem statement itself as its sole subgoal has
+    not decomposed anything — Jaccard against any real decomposition is always
+    0, inflating hardness_score spuriously. Filter these before computing
+    consensus.
+
+    The check is string equality after stripping whitespace. Structural
+    equivalence (alpha-renaming, notation unfolding) is out of scope for now.
+    """
+    if len(decomp.subgoals) != 1:
+        return False
+    return decomp.subgoals[0].statement.strip() == decomp.target_statement.strip()
+
+
 def pairwise_jaccard(sets: Sequence[frozenset[str]]) -> float:
     """Mean pairwise Jaccard similarity across all pairs in *sets*.
 
@@ -51,19 +67,23 @@ class ConsensusResult:
 
     Attributes:
         problem_id: The problem all decompositions address.
-        n_models: Number of independent models analysed.
-        consensus_score: Mean pairwise Jaccard of lemma-statement sets.
-            0.0 = total disagreement, 1.0 = all models identical.
-        hardness_score: 1 - consensus_score.
-        novel_statements: Every statement introduced by at least one model but
-            not already present in any earlier model's submission (ordered by
-            first appearance; frozenset for hashability).
+        n_models: Number of independent models analysed (including degenerate).
+        n_degenerate: Models whose sole subgoal was the theorem statement itself
+            (tautological non-decompositions, excluded from consensus computation).
+        consensus_score: Mean pairwise Jaccard of non-degenerate lemma-statement
+            sets. None when every model produced a degenerate decomposition —
+            the signal is undefined, not zero hardness.
+        hardness_score: 1 - consensus_score, or None when consensus_score is None.
+        novel_statements: Every statement introduced by at least one non-degenerate
+            model but not already present in any earlier model's submission
+            (ordered by first appearance; frozenset for hashability).
     """
 
     problem_id: str
     n_models: int
-    consensus_score: float
-    hardness_score: float
+    n_degenerate: int
+    consensus_score: float | None
+    hardness_score: float | None
     novel_statements: frozenset[str]
 
 
@@ -77,13 +97,30 @@ def compute_consensus(
     produced (earlier = higher seniority for novelty attribution). All entries must
     share the same ``target_id``.
 
+    Degenerate decompositions (sole subgoal == target statement) are excluded
+    before computing Jaccard consensus; if all decompositions are degenerate,
+    ``consensus_score`` and ``hardness_score`` are ``None``.
+
     Raises:
         ValueError: If *decompositions* is empty.
     """
     if not decompositions:
         raise ValueError("compute_consensus requires at least one decomposition")
 
-    all_sets = [_statement_set(d) for d in decompositions]
+    n_degenerate = sum(1 for d in decompositions if is_degenerate(d))
+    real = [d for d in decompositions if not is_degenerate(d)]
+
+    if not real:
+        return ConsensusResult(
+            problem_id=problem_id,
+            n_models=len(decompositions),
+            n_degenerate=n_degenerate,
+            consensus_score=None,
+            hardness_score=None,
+            novel_statements=frozenset(),
+        )
+
+    all_sets = [_statement_set(d) for d in real]
     consensus = pairwise_jaccard(all_sets)
 
     seen: set[str] = set()
@@ -95,6 +132,7 @@ def compute_consensus(
     return ConsensusResult(
         problem_id=problem_id,
         n_models=len(decompositions),
+        n_degenerate=n_degenerate,
         consensus_score=consensus,
         hardness_score=1.0 - consensus,
         novel_statements=frozenset(novel),

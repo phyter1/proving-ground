@@ -7,20 +7,23 @@ import pytest
 from proving_ground.hardness import (
     ConsensusResult,
     compute_consensus,
+    is_degenerate,
     novelty_weight,
     pairwise_jaccard,
 )
 from proving_ground.models import Decomposition, Subgoal
 
+THEOREM = "∀ n : ℕ, Even n ∨ Odd n"
+
 
 # --- helpers ----------------------------------------------------------------
 
 
-def _decomp(target_id: str, statements: list[str]) -> Decomposition:
+def _decomp(target_id: str, statements: list[str], target_statement: str = "C") -> Decomposition:
     """Minimal Decomposition passing all hard gates."""
     return Decomposition(
         target_id=target_id,
-        target_statement="C",
+        target_statement=target_statement,
         subgoals=tuple(Subgoal(f"L{i}", s) for i, s in enumerate(statements)),
         root_implication_verified=True,
         statement_matches_target=True,
@@ -76,6 +79,35 @@ def test_one_empty_one_nonempty():
     assert pairwise_jaccard([a, b]) == pytest.approx(0.0)
 
 
+# --- is_degenerate ----------------------------------------------------------
+
+
+def test_sole_subgoal_equals_target_is_degenerate():
+    d = _decomp("conj-1", [THEOREM], target_statement=THEOREM)
+    assert is_degenerate(d) is True
+
+
+def test_sole_subgoal_equals_target_with_whitespace_is_degenerate():
+    d = _decomp("conj-1", [f"  {THEOREM}  "], target_statement=THEOREM)
+    assert is_degenerate(d) is True
+
+
+def test_sole_subgoal_differs_is_not_degenerate():
+    d = _decomp("conj-1", ["Even 0 ∨ Odd 0"], target_statement=THEOREM)
+    assert is_degenerate(d) is False
+
+
+def test_multiple_subgoals_not_degenerate_even_if_one_matches():
+    # Two subgoals: not a degenerate echo regardless of content
+    d = _decomp("conj-1", [THEOREM, "Even 0 ∨ Odd 0"], target_statement=THEOREM)
+    assert is_degenerate(d) is False
+
+
+def test_empty_subgoals_not_degenerate():
+    d = _decomp("conj-1", [], target_statement=THEOREM)
+    assert is_degenerate(d) is False
+
+
 # --- compute_consensus ------------------------------------------------------
 
 
@@ -87,6 +119,7 @@ def test_identical_decompositions_zero_hardness():
     assert r.consensus_score == pytest.approx(1.0)
     assert r.hardness_score == pytest.approx(0.0)
     assert r.n_models == 2
+    assert r.n_degenerate == 0
     assert r.problem_id == "conj-1"
 
 
@@ -95,6 +128,7 @@ def test_disjoint_decompositions_full_hardness():
     d2 = _decomp("conj-1", ["C", "D"])
     r = compute_consensus("conj-1", [d1, d2])
     assert r.hardness_score == pytest.approx(1.0)
+    assert r.n_degenerate == 0
 
 
 def test_novel_statements_first_model_all_novel():
@@ -111,6 +145,7 @@ def test_single_decomposition_hardness_zero():
     r = compute_consensus("conj-1", [d])
     assert r.hardness_score == pytest.approx(0.0)
     assert r.n_models == 1
+    assert r.n_degenerate == 0
 
 
 def test_empty_decompositions_raises():
@@ -126,6 +161,7 @@ def test_empty_subgoal_sets_high_consensus():
     assert r.consensus_score == pytest.approx(1.0)
     assert r.hardness_score == pytest.approx(0.0)
     assert r.novel_statements == frozenset()
+    assert r.n_degenerate == 0
 
 
 def test_three_model_partial_overlap():
@@ -137,6 +173,46 @@ def test_three_model_partial_overlap():
     r = compute_consensus("conj-1", [d1, d2, d3])
     assert r.consensus_score == pytest.approx(1 / 9)
     assert r.hardness_score == pytest.approx(8 / 9)
+    assert r.n_degenerate == 0
+
+
+def test_all_degenerate_consensus_is_none():
+    # Reproduces the beat 655 failure: Qwen3.5 echoed the theorem statement
+    d1 = _decomp("conj-1", [THEOREM], target_statement=THEOREM)
+    d2 = _decomp("conj-1", [THEOREM], target_statement=THEOREM)
+    r = compute_consensus("conj-1", [d1, d2])
+    assert r.consensus_score is None
+    assert r.hardness_score is None
+    assert r.n_models == 2
+    assert r.n_degenerate == 2
+    assert r.novel_statements == frozenset()
+
+
+def test_mixed_degenerate_computes_on_real_only():
+    # One degenerate (Qwen3.5-style echo), one real (Gemma4-style inductive decomp)
+    echo = _decomp("conj-1", [THEOREM], target_statement=THEOREM)
+    real = _decomp("conj-1", ["Even 0 ∨ Odd 0", "Even (S k) ∨ Odd (S k)"], target_statement=THEOREM)
+    r = compute_consensus("conj-1", [echo, real])
+    # Only one non-degenerate model: pairwise_jaccard([set]) = 1.0 → hardness 0.0
+    assert r.n_models == 2
+    assert r.n_degenerate == 1
+    assert r.consensus_score == pytest.approx(1.0)
+    assert r.hardness_score == pytest.approx(0.0)
+    assert "Even 0 ∨ Odd 0" in r.novel_statements
+    assert "Even (S k) ∨ Odd (S k)" in r.novel_statements
+
+
+def test_mixed_degenerate_two_real_models_computes_correctly():
+    # Degenerate + two real models with partial overlap
+    echo = _decomp("conj-1", [THEOREM], target_statement=THEOREM)
+    d1 = _decomp("conj-1", ["A", "B"], target_statement=THEOREM)
+    d2 = _decomp("conj-1", ["A", "C"], target_statement=THEOREM)
+    r = compute_consensus("conj-1", [echo, d1, d2])
+    assert r.n_models == 3
+    assert r.n_degenerate == 1
+    # pairwise_jaccard([{A,B},{A,C}]) = 1/3
+    assert r.consensus_score == pytest.approx(1 / 3)
+    assert r.hardness_score == pytest.approx(2 / 3)
 
 
 # --- novelty_weight ---------------------------------------------------------
