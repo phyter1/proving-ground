@@ -102,3 +102,47 @@ Implemented in `results.py` (`rank_open`, suppressed open scalar) and `leaderboa
 (open-tier table = solved + verified reductions + lemmas surfaced; headline ⭐ = an actual
 solve). The deeper open question — rewarding genuine *simplification* of the residual —
 still needs a hardness signal we don't have.
+
+## Hardness signal: dual failure modes (ren1 fleet, June 2026)
+
+The cross-model Jaccard hardness module shipped in beat 652 (`hardness.py`). Empirical
+data from ren1 fleet runs (`fleet-collect-config-ren1.json`) exposed two failure modes:
+
+**Failure mode 1 — calibration false positive (token-Jaccard surface variation).**
+`calib-add-identities`: qwen3.5 returns `∀ n : ℕ, n + 0 = n`, gemma4 returns `n + 0 = n`.
+These are the same proposition — but raw token-Jaccard scores them as fully disjoint,
+producing hardness_score = 1.0 on a trivially solvable calibration problem. The metric
+marked "easy" as "maximally hard."
+
+**Failure mode 2 — frontier null collapse.**
+`twin-primes` across all tested model families (qwen3.5/Alibaba, gemma4/Google,
+granite/IBM): all three models return degenerate or near-degenerate single-subgoal
+restatements of the target. N_real < 2 after filtering → hardness = null. The metric
+cannot distinguish "this problem is so hard no decomposition strategy is known" from
+"these models lack the capability to decompose this problem." Both look like null.
+
+**Root cause of failure mode 1.** Token-Jaccard is blind to universal quantifier
+equivalence: `∀ n : ℕ, n + 0 = n` and `n + 0 = n` share almost no tokens despite being
+the same mathematical proposition.
+
+**Fix shipped (June 2026, `hardness.py`).** `_normalize_statement()` strips leading `∀`
+quantifier prefixes before Jaccard comparison. `compute_consensus` uses normalized sets for
+Jaccard; raw sets for `novel_statements` output. `is_degenerate` adds a normalized exact-
+match phase between the raw exact match and the raw token containment check. 179 tests
+pass. The calibration case now scores hardness ≈ 0.0 correctly; the frontier null pattern
+is unaffected (correct behavior — the signal genuinely is undefined when no model can
+produce a real decomposition).
+
+**Reframe: decomposability signal, not hardness signal.**
+The metric measures *decomposability diversity across models*: whether independent models
+find distinct decomposition paths. This is a proxy for hardness only when (a) the models
+are capable of decomposing if a strategy exists, and (b) a known decomposition strategy
+exists. For genuine research-frontier problems, condition (b) fails — no known strategy
+→ all models collapse to restatements → null. The null is correct, not a bug. A null
+result for an open conjecture means "no tested model can decompose this problem," which
+is information, not measurement failure.
+
+**Open:** A hardness signal that can discriminate frontier problems from each other
+(some open problems are "closer" to being solved than others) would require a different
+approach — model capability assessment, or a library of known partial results to compare
+against.

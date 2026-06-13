@@ -1,0 +1,36 @@
+{
+  "problem_id": "calib-add-identities",
+  "n_models": 3,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": 0.0,
+    "hardness_score": 1.0,
+    "novel_statements": [
+      "0 + n = n",
+      "n + 0 = n",
+      "\u2200 n : \u2115, 0 + n = n",
+      "\u2200 n : \u2115, n + 0 = n"
+    ]
+  },
+  "entries": [
+    {
+      "model": "qwen3.5-9b-mlx",
+      "subgoal_statements": [
+        "\u2200 n : \u2115, n + 0 = n",
+        "\u2200 n : \u2115, 0 + n = n"
+      ]
+    },
+    {
+      "model": "gemma4-e2b-ren2",
+      "subgoal_statements": [
+        "n + 0 = n",
+        "0 + n = n"
+      ]
+    },
+    {
+      "model": "qwen3-0.6b-ren1",
+      "subgoal_statements": []
+    }
+  ],
+  "errors": []
+}

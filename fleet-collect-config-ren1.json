@@ -9,6 +9,11 @@
       "name": "ren2/gemma4-e2b",
       "model": "gemma4:e2b",
       "base_url": "http://localhost:13434/v1"
+    },
+    {
+      "name": "ren2/granite3.1-moe-3b",
+      "model": "granite3.1-moe:3b",
+      "base_url": "http://localhost:13434/v1"
     }
   ]
 }

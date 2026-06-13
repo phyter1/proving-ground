@@ -17,14 +17,39 @@ Reference design note: notes/archive/proving-ground-hardness-signal.md (2026-06-
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Sequence
 
 from proving_ground.models import Decomposition
 
+# Matches one or more leading '∀ <vars> : <type>, ' blocks.
+# Stripping these lets '∀ n : ℕ, n + 0 = n' and 'n + 0 = n' compare as identical —
+# a model that echoes the target with quantifiers stripped has still not decomposed anything.
+_FORALL_RE = re.compile(r"^(?:∀\s+[^,]+,\s*)+")
+
+
+def _normalize_statement(stmt: str) -> str:
+    """Strip leading universal quantifier prefixes for semantic comparison.
+
+    Lean statements surface the same proposition with or without explicit '∀'
+    wrappers. Without normalization, token-Jaccard marks models that agree
+    semantically as disagreeing — inflating hardness_score spuriously on
+    calibration problems where every model reaches the same answer.
+
+    Only strips leading '∀' blocks; '∃' and body-level quantifiers are preserved.
+    Returns the original string if stripping would produce an empty result.
+    """
+    stripped = _FORALL_RE.sub("", stmt.strip()).strip()
+    return stripped if stripped else stmt.strip()
+
 
 def _statement_set(d: Decomposition) -> frozenset[str]:
     return frozenset(sg.statement for sg in d.subgoals)
+
+
+def _normalized_statement_set(d: Decomposition) -> frozenset[str]:
+    return frozenset(_normalize_statement(sg.statement) for sg in d.subgoals)
 
 
 def _token_containment(subgoal_stmt: str, target_stmt: str) -> float:
@@ -69,11 +94,20 @@ def is_degenerate(decomp: Decomposition, near_degenerate_threshold: float = 0.9)
     """
     if len(decomp.subgoals) != 1:
         return False
-    stmt = decomp.subgoals[0].statement.strip()
-    target = decomp.target_statement.strip()
-    if stmt == target:
+    raw_stmt = decomp.subgoals[0].statement.strip()
+    raw_target = decomp.target_statement.strip()
+    # Phase 1: exact match on raw strings.
+    if raw_stmt == raw_target:
         return True
-    return _token_containment(stmt, target) >= near_degenerate_threshold
+    # Phase 2: normalized exact match — catches models that echo the theorem
+    # after dropping leading ∀ wrappers (e.g. 'n + 0 = n' vs '∀ n : ℕ, n + 0 = n').
+    if _normalize_statement(raw_stmt) == _normalize_statement(raw_target):
+        return True
+    # Phase 3: near-degenerate token containment — uses RAW strings intentionally.
+    # Normalizing before containment produces false positives: a short normalized
+    # form (e.g. 'Q n' from '∀ n, Q n') appears coincidentally inside a longer
+    # normalized target ('P n → Q n') even when they are genuinely distinct claims.
+    return _token_containment(raw_stmt, raw_target) >= near_degenerate_threshold
 
 
 def pairwise_jaccard(sets: Sequence[frozenset[str]]) -> float:
@@ -153,11 +187,14 @@ def compute_consensus(
             novel_statements=frozenset(),
         )
 
-    all_sets = [_statement_set(d) for d in real]
+    # Raw sets for novel-statement attribution (preserve display strings).
+    raw_sets = [_statement_set(d) for d in real]
+    # Normalized sets for Jaccard consensus (semantic deduplication across models).
+    norm_sets = [_normalized_statement_set(d) for d in real]
 
     seen: set[str] = set()
     novel: set[str] = set()
-    for stmt_set in all_sets:
+    for stmt_set in raw_sets:
         novel.update(stmt_set - seen)
         seen.update(stmt_set)
 
@@ -175,7 +212,7 @@ def compute_consensus(
             novel_statements=frozenset(novel),
         )
 
-    consensus = pairwise_jaccard(all_sets)
+    consensus = pairwise_jaccard(norm_sets)
 
     return ConsensusResult(
         problem_id=problem_id,

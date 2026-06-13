@@ -6,6 +6,7 @@ import pytest
 
 from proving_ground.hardness import (
     ConsensusResult,
+    _normalize_statement,
     _token_containment,
     compute_consensus,
     is_degenerate,
@@ -301,3 +302,64 @@ def test_novel_statement_zero_hardness_zero_weight():
 
 def test_empty_seen_any_statement_novel():
     assert novelty_weight("X", frozenset(), hardness_score=0.6) == pytest.approx(0.6)
+
+
+# --- _normalize_statement ----------------------------------------------------
+
+
+def test_normalize_strips_single_forall():
+    assert _normalize_statement("∀ n : ℕ, n + 0 = n") == "n + 0 = n"
+
+
+def test_normalize_strips_multi_var_forall():
+    assert _normalize_statement("∀ n m : ℕ, n + m = m + n") == "n + m = m + n"
+
+
+def test_normalize_strips_chained_foralls():
+    assert _normalize_statement("∀ n : ℕ, ∀ m : ℕ, n + m = m + n") == "n + m = m + n"
+
+
+def test_normalize_leaves_existential_unchanged():
+    stmt = "∃ p : ℕ, Nat.Prime p ∧ Nat.Prime (p + 2)"
+    assert _normalize_statement(stmt) == stmt
+
+
+def test_normalize_leaves_bare_statement_unchanged():
+    stmt = "n + 0 = n"
+    assert _normalize_statement(stmt) == stmt
+
+
+def test_normalize_nonempty_result_after_strip():
+    # Should not return empty string even for a bare quantifier edge case.
+    result = _normalize_statement("∀ n : ℕ, True")
+    assert result  # non-empty
+
+
+# --- quantifier-normalized consensus -----------------------------------------
+
+
+def test_forall_stripped_models_reach_consensus():
+    """∀-prefixed and bare forms of the same statement count as identical for Jaccard."""
+    target = "∀ n : ℕ, n + 0 = n"
+    d1 = _decomp("add-id", ["∀ n : ℕ, n + 0 = n", "∀ n : ℕ, 0 + n = n"], target_statement=target)
+    d2 = _decomp("add-id", ["n + 0 = n", "0 + n = n"], target_statement=target)
+    r = compute_consensus("add-id", [d1, d2])
+    # Neither is degenerate (both have 2 subgoals).
+    assert r.n_degenerate == 0
+    # After normalization, both models produce the same two statements → Jaccard = 1.0
+    assert r.consensus_score == pytest.approx(1.0)
+    assert r.hardness_score == pytest.approx(0.0)
+
+
+def test_forall_normalized_degenerate_detection():
+    """Subgoal equal to target after quantifier stripping is degenerate."""
+    target = "∀ n : ℕ, n + 0 = n"
+    d = _decomp("add-id", ["n + 0 = n"], target_statement=target)
+    assert is_degenerate(d) is True
+
+
+def test_forall_normalized_degenerate_does_not_affect_multi_subgoal():
+    """Quantifier stripping degenerate check still only fires on single-subgoal decomps."""
+    target = "∀ n : ℕ, n + 0 = n"
+    d = _decomp("add-id", ["n + 0 = n", "0 + n = n"], target_statement=target)
+    assert is_degenerate(d) is False
