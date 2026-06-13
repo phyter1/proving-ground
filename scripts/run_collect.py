@@ -48,8 +48,9 @@ def runners_from_config(config_path: str) -> list[OpenAICompatibleRunner]:
         runner = OpenAICompatibleRunner(
             model=m["model"],
             base_url=m["base_url"],
-            timeout=300.0,
+            timeout=m.get("timeout", 300.0),
             temperature=0.0,
+            extra_body=m.get("extra_body"),
         )
         runner.name = m["name"]
         runners.append(runner)

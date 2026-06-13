@@ -1,0 +1,33 @@
+{
+  "problem_id": "tractable-even-product",
+  "n_models": 2,
+  "n_degenerate": 1,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": null,
+    "hardness_score": null,
+    "novel_statements": [
+      "Even (n * (n + 1))"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/gemma4-e4b-mlx",
+      "n_subgoals": 2,
+      "subgoals": [
+        "Even (n * (n + 1))",
+        "Even (n * (n + 1))"
+      ],
+      "is_degenerate": false
+    },
+    {
+      "model": "ren3/qwen3.5-9b-mlx",
+      "n_subgoals": 1,
+      "subgoals": [
+        "∀ n : ℕ, Even (n * (n + 1))"
+      ],
+      "is_degenerate": true
+    }
+  ],
+  "errors": []
+}

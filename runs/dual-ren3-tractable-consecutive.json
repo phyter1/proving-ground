@@ -1,0 +1,37 @@
+{
+  "problem_id": "tractable-consecutive",
+  "n_models": 2,
+  "n_degenerate": 0,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": 1.0,
+    "hardness_score": 0.0,
+    "novel_statements": [
+      "∀ n : ℕ, n ≤ n + 1",
+      "∀ n : ℕ, 2 ∣ n * (n + 1)",
+      "2 ∣ n * (n + 1)",
+      "n ≤ n + 1"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/gemma4-e4b-mlx",
+      "n_subgoals": 2,
+      "subgoals": [
+        "n ≤ n + 1",
+        "2 ∣ n * (n + 1)"
+      ],
+      "is_degenerate": false
+    },
+    {
+      "model": "ren3/qwen3.5-9b-mlx",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∀ n : ℕ, n ≤ n + 1",
+        "∀ n : ℕ, 2 ∣ n * (n + 1)"
+      ],
+      "is_degenerate": false
+    }
+  ],
+  "errors": []
+}
