@@ -27,20 +27,53 @@ def _statement_set(d: Decomposition) -> frozenset[str]:
     return frozenset(sg.statement for sg in d.subgoals)
 
 
-def is_degenerate(decomp: Decomposition) -> bool:
-    """Return True if the decomposition is a tautological non-decomposition.
+def _token_containment(subgoal_stmt: str, target_stmt: str) -> float:
+    """Fraction of the subgoal's whitespace-delimited tokens that appear in the target.
+
+    A near-degenerate rephrasing (e.g. dropping a universal quantifier to get a
+    weaker existential sub-claim) will have nearly all of its tokens present in
+    the full target statement because it is derived from the same vocabulary.
+    A genuine decomposition step introduces new lemma names, bound variables, or
+    intermediate concepts that are not in the target.
+    """
+    sub_tokens = frozenset(subgoal_stmt.split())
+    tgt_tokens = frozenset(target_stmt.split())
+    if not sub_tokens:
+        return 1.0
+    return len(sub_tokens & tgt_tokens) / len(sub_tokens)
+
+
+def is_degenerate(decomp: Decomposition, near_degenerate_threshold: float = 0.9) -> bool:
+    """Return True if the decomposition is a tautological or near-tautological non-decomposition.
 
     A model that outputs the theorem statement itself as its sole subgoal has
     not decomposed anything — Jaccard against any real decomposition is always
     0, inflating hardness_score spuriously. Filter these before computing
     consensus.
 
-    The check is string equality after stripping whitespace. Structural
-    equivalence (alpha-renaming, notation unfolding) is out of scope for now.
+    Also catches near-degenerate single-subgoal decompositions: a subgoal that
+    is a quantifier-weakening or rearrangement of the target uses almost
+    exclusively tokens already present in the target. When token containment
+    (fraction of subgoal tokens found in the target) exceeds
+    *near_degenerate_threshold*, the subgoal carries no novel search-space
+    signal and is filtered the same way as an exact echo.
+
+    Observed example: target ``∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)``
+    → qwen3.5 subgoal ``∃ p : ℕ, Nat.Prime p ∧ Nat.Prime (p + 2)`` has containment 1.0.
+
+    Args:
+        decomp: The decomposition to evaluate.
+        near_degenerate_threshold: Containment fraction at or above which a
+            single-subgoal decomposition is considered near-degenerate (default 0.9).
+            Only evaluated when the subgoal is not already an exact match.
     """
     if len(decomp.subgoals) != 1:
         return False
-    return decomp.subgoals[0].statement.strip() == decomp.target_statement.strip()
+    stmt = decomp.subgoals[0].statement.strip()
+    target = decomp.target_statement.strip()
+    if stmt == target:
+        return True
+    return _token_containment(stmt, target) >= near_degenerate_threshold
 
 
 def pairwise_jaccard(sets: Sequence[frozenset[str]]) -> float:
@@ -121,13 +154,28 @@ def compute_consensus(
         )
 
     all_sets = [_statement_set(d) for d in real]
-    consensus = pairwise_jaccard(all_sets)
 
     seen: set[str] = set()
     novel: set[str] = set()
     for stmt_set in all_sets:
         novel.update(stmt_set - seen)
         seen.update(stmt_set)
+
+    if len(real) < 2:
+        # Cannot compute cross-model agreement with a single real decomposition.
+        # Return None rather than the pairwise_jaccard default of 1.0 (which
+        # would imply "trivially tractable" — a false signal when only one model
+        # produced a non-degenerate result).
+        return ConsensusResult(
+            problem_id=problem_id,
+            n_models=len(decompositions),
+            n_degenerate=n_degenerate,
+            consensus_score=None,
+            hardness_score=None,
+            novel_statements=frozenset(novel),
+        )
+
+    consensus = pairwise_jaccard(all_sets)
 
     return ConsensusResult(
         problem_id=problem_id,
