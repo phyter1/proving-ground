@@ -1,0 +1,33 @@
+{
+  "problem_id": "twin-primes",
+  "n_models": 2,
+  "n_degenerate": 0,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": 0.0,
+    "hardness_score": 1.0,
+    "novel_statements": [
+      "N < p",
+      "Nat.Prime (p + 2)",
+      "\u2203 p : \u2115, Nat.Prime p \u2227 Nat.Prime (p + 2)"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/qwen3.5-9b-mlx",
+      "subgoal_statements": [
+        "\u2203 p : \u2115, Nat.Prime p \u2227 Nat.Prime (p + 2)"
+      ],
+      "is_degenerate": false
+    },
+    {
+      "model": "ren2/gemma4-e2b",
+      "subgoal_statements": [
+        "N < p",
+        "Nat.Prime (p + 2)"
+      ],
+      "is_degenerate": false
+    }
+  ],
+  "errors": []
+}
