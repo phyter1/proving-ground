@@ -39,6 +39,14 @@ def _normalize_statement(stmt: str) -> str:
 
     Only strips leading '∀' blocks; '∃' and body-level quantifiers are preserved.
     Returns the original string if stripping would produce an empty result.
+
+    Known limitation — alpha-equivalence: stripping the '∀' prefix removes the
+    quantifier but leaves bound variable names in the body unchanged. Two models
+    writing the same step with different variable name conventions (e.g. 'k + b =
+    b + k' vs 'n + m = m + n') produce disjoint token sets and score Jaccard=0.
+    A fix requires extracting bound variable names from the stripped prefix and
+    renaming them by first-appearance order in the body. See test_hardness.py
+    test_alpha_equivalent_subgoals_reach_consensus (xfail).
     """
     stripped = _FORALL_RE.sub("", stmt.strip()).strip()
     return stripped if stripped else stmt.strip()

@@ -363,3 +363,42 @@ def test_forall_normalized_degenerate_does_not_affect_multi_subgoal():
     target = "∀ n : ℕ, n + 0 = n"
     d = _decomp("add-id", ["n + 0 = n", "0 + n = n"], target_statement=target)
     assert is_degenerate(d) is False
+
+
+# --- known limitations (xfail) -----------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Alpha-equivalence normalization not implemented. "
+        "_normalize_statement strips ∀ prefixes but does not rename bound variables "
+        "in the body. Two models writing the same proof step with different variable "
+        "name conventions (e.g. b,k vs n,m) produce disjoint token sets and get "
+        "Jaccard=0 when the correct answer is ~1.0. Fix requires parsing bound "
+        "variable names from the stripped prefix and renaming by first-appearance "
+        "order in the body."
+    ),
+)
+def test_alpha_equivalent_subgoals_reach_consensus():
+    """Models agreeing on proof structure but differing only in variable names should score consensus=1.0.
+
+    After ∀-stripping: 'k + b = b + k' vs 'n + m = m + n' are alpha-equivalent
+    (same structure, different variable names) but currently score Jaccard=0.
+    This inflates hardness_score for problems where all models find the same path.
+    """
+    target = "∀ n : ℕ, n + 0 = n"
+    d1 = _decomp(
+        "comm",
+        ["∀ b k : ℕ, k + b = b + k", "∀ b : ℕ, b + 0 = 0 + b"],
+        target_statement=target,
+    )
+    d2 = _decomp(
+        "comm",
+        ["∀ n m : ℕ, n + m = m + n", "∀ n : ℕ, n + 0 = 0 + n"],
+        target_statement=target,
+    )
+    r = compute_consensus("comm", [d1, d2])
+    assert r.n_degenerate == 0
+    assert r.consensus_score == pytest.approx(1.0)
+    assert r.hardness_score == pytest.approx(0.0)
