@@ -6,14 +6,10 @@
       "base_url": "http://localhost:13000/v1"
     },
     {
-      "name": "ren2/gemma4-e2b",
-      "model": "gemma4:e2b",
-      "base_url": "http://localhost:13434/v1"
-    },
-    {
       "name": "ren2/granite3.1-moe-3b",
       "model": "granite3.1-moe:3b",
       "base_url": "http://localhost:13434/v1"
     }
-  ]
+  ],
+  "_note": "2-model config (Alibaba + IBM). gemma4-e2b removed: times out when run after granite on same Ollama instance. 3rd family (gpt-oss:20b / OpenAI-family) requires ren4, which is offline. Restore by adding ren4 entry when ren4 comes back."
 }
