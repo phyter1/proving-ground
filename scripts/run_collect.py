@@ -77,11 +77,7 @@ def main() -> None:
     output = {
         "problem_id": result.problem_id,
         "n_models": len(runners),
-        "n_degenerate": sum(
-            1 for _, d in result.entries
-            if len(d.subgoals) == 0 or
-               (len(d.subgoals) == 1 and d.subgoals[0].statement == problem.statement)
-        ),
+        "n_degenerate": sum(1 for _, d in result.entries if is_degenerate(d)),
         "n_errors": len(result.errors),
         "consensus": {
             "consensus_score": result.consensus.consensus_score if result.consensus else None,
