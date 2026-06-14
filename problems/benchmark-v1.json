@@ -55,6 +55,48 @@
     "metadata": {"note": "differentiator: needs case analysis or a mathlib lemma"}
   },
   {
+    "id": "tractable-prime-gaps",
+    "statement": "∀ k : ℕ, ∃ n : ℕ, ∀ j : ℕ, 1 ≤ j → j ≤ k → ¬Nat.Prime (n + j)",
+    "tier": "weakly_open",
+    "source": "proving-ground/benchmark-v1",
+    "title": "Arbitrarily large prime gaps",
+    "references": ["https://en.wikipedia.org/wiki/Prime_gap"],
+    "preamble": "import Mathlib",
+    "proved_after": null,
+    "metadata": {
+      "note": "elementary witness: n = (k+1)! + 1, then n+j = (k+1)!+j+1 is divisible by j+1 for 1 ≤ j ≤ k. Likely formalizable but non-trivial.",
+      "hint": "witness n = Nat.factorial (k + 1) + 1; show (k+1)! + j + 1 ∣ (k+1)! + j + 1 using dvd_add and Nat.factorial_dvd_factorial"
+    }
+  },
+  {
+    "id": "collatz",
+    "statement": "∀ n : ℕ, 0 < n → ∃ k : ℕ, Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k n = 1",
+    "tier": "open",
+    "source": "proving-ground/benchmark-v1",
+    "title": "Collatz Conjecture",
+    "references": ["https://en.wikipedia.org/wiki/Collatz_conjecture"],
+    "preamble": "import Mathlib",
+    "proved_after": null,
+    "metadata": {
+      "note": "genuinely open; the 3n+1 problem. No finite verification suffices.",
+      "difficulty": "one of the most famous open problems in elementary number theory"
+    }
+  },
+  {
+    "id": "legendre",
+    "statement": "∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p",
+    "tier": "open",
+    "source": "proving-ground/benchmark-v1",
+    "title": "Legendre's Conjecture",
+    "references": ["https://en.wikipedia.org/wiki/Legendre%27s_conjecture"],
+    "preamble": "import Mathlib",
+    "proved_after": null,
+    "metadata": {
+      "note": "genuinely open; there is always a prime between consecutive perfect squares",
+      "difficulty": "one of Landau's four problems (1912), still unresolved"
+    }
+  },
+  {
     "id": "twin-primes",
     "statement": "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)",
     "tier": "open",
