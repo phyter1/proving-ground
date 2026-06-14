@@ -137,6 +137,27 @@ def test_near_degenerate_multi_subgoal_not_flagged():
     assert is_degenerate(d) is False
 
 
+def test_all_subgoals_target_echo_multi_is_degenerate():
+    # Observed in calibration: gemma4 produced ["Even (n*(n+1))", "Even (n*(n+1))"]
+    # where the target was "∀ n : ℕ, Even (n*(n+1))". Both subgoals normalize to
+    # the target — the model filled two slots but made no real decomposition.
+    target = "∀ n : ℕ, Even (n * (n + 1))"
+    d = _decomp("even-product", ["Even (n * (n + 1))", "Even (n * (n + 1))"], target_statement=target)
+    assert is_degenerate(d) is True
+
+
+def test_all_subgoals_exact_echo_multi_is_degenerate():
+    # Same theorem repeated verbatim across three slots.
+    d = _decomp("conj-1", [THEOREM, THEOREM, THEOREM], target_statement=THEOREM)
+    assert is_degenerate(d) is True
+
+
+def test_partial_echo_multi_not_degenerate():
+    # One echo + one real subgoal → not degenerate (real work present).
+    d = _decomp("conj-1", [THEOREM, "Even 0 ∨ Odd 0"], target_statement=THEOREM)
+    assert is_degenerate(d) is False
+
+
 # --- _token_containment -----------------------------------------------------
 
 

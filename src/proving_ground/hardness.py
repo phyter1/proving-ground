@@ -127,6 +127,14 @@ def is_degenerate(decomp: Decomposition, near_degenerate_threshold: float = 0.9)
             single-subgoal decomposition is considered near-degenerate (default 0.9).
             Only evaluated when the subgoal is not already an exact match.
     """
+    # Phase 0: every subgoal is a target echo → no real decomposition, regardless
+    # of count. Catches ["T", "T"] the same way a single ["T"] is caught below.
+    # Observed: gemma4 produced two identical target-echo subgoals on even-product.
+    if decomp.subgoals and not any(
+        not _is_target_echo(sg.statement, decomp.target_statement)
+        for sg in decomp.subgoals
+    ):
+        return True
     if len(decomp.subgoals) != 1:
         return False
     raw_stmt = decomp.subgoals[0].statement.strip()
