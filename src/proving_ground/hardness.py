@@ -23,11 +23,13 @@ from typing import Sequence
 
 from proving_ground.models import Decomposition
 
-# Matches a single Lean identifier token: starts with a letter or underscore,
-# followed by zero or more letters, digits, underscores, or apostrophes.
-# A bare identifier like 'lemma_3' or 'h1' matches; a proposition like
-# '∃ p, Nat.Prime p' does not because it contains spaces and operators.
-_LEAN_IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_']*$")
+# Matches a bare Lean identifier (extraction-fallback pattern): starts with a
+# letter or underscore, followed by ONE OR MORE letters, digits, underscores, or
+# apostrophes. The minimum length of 2 is intentional — single-letter tokens
+# ('A', 'B', 'p', 'n') are common propositional-variable names in Lean 4 and
+# should NOT be treated as bare-identifier fallbacks. Real extraction-fallback
+# identifiers are always longer ('lemma_3', 'h1', 'hq', 'rfl').
+_LEAN_IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_']+$")
 
 # Matches one or more leading '∀ <vars> : <type>, ' blocks.
 # Stripping these lets '∀ n : ℕ, n + 0 = n' and 'n + 0 = n' compare as identical —
@@ -310,24 +312,51 @@ class ConsensusResult:
 
     Attributes:
         problem_id: The problem all decompositions address.
-        n_models: Number of independent models analysed (including degenerate).
-        n_degenerate: Models whose sole subgoal was the theorem statement itself
-            (tautological non-decompositions, excluded from consensus computation).
-        consensus_score: Mean pairwise Jaccard of non-degenerate lemma-statement
-            sets. None when every model produced a degenerate decomposition —
-            the signal is undefined, not zero hardness.
+        n_models: Number of independent models analysed (including all excluded).
+        n_degenerate: Models whose decomposition was a tautological restatement
+            of the target — excluded from consensus.
+        n_invalid: Models whose decomposition was non-degenerate but invalid for
+            Jaccard consensus: trivial tautologies (all subgoals are ``True``/``⊤``)
+            or reference-only outputs (bare identifiers without type annotations).
+            Both classes produce spurious hardness inflation when paired against
+            structured-correct outputs (Jaccard distance is maximised because their
+            token sets share nothing with real propositions).
+        consensus_score: Mean pairwise Jaccard of valid lemma-statement sets
+            (non-degenerate and non-invalid). None when fewer than 2 valid
+            decompositions exist — the signal is undefined, not zero hardness.
         hardness_score: 1 - consensus_score, or None when consensus_score is None.
-        novel_statements: Every statement introduced by at least one non-degenerate
-            model but not already present in any earlier model's submission
+        novel_statements: Every statement introduced by at least one valid model
+            but not already present in any earlier valid model's submission
             (ordered by first appearance; frozenset for hashability).
     """
 
     problem_id: str
     n_models: int
     n_degenerate: int
+    n_invalid: int
     consensus_score: float | None
     hardness_score: float | None
     novel_statements: frozenset[str]
+
+
+def _is_valid_for_consensus(decomp: Decomposition) -> bool:
+    """Return True when a decomposition contributes genuine mathematical signal.
+
+    A valid decomposition must be:
+    - Not degenerate (restatement of the target)
+    - Not a trivial tautology (all subgoals are ``True``/``⊤``)
+    - Not reference-only (bare identifiers without type annotations)
+
+    Trivial tautologies and reference-only outputs inflate hardness spuriously
+    when paired against structured-correct outputs: their token sets share nothing
+    with real propositions, maximising Jaccard distance regardless of whether the
+    target problem is genuinely hard.
+    """
+    return (
+        not is_degenerate(decomp)
+        and not is_trivial_tautology(decomp)
+        and not is_reference_only(decomp)
+    )
 
 
 def compute_consensus(
@@ -340,9 +369,10 @@ def compute_consensus(
     produced (earlier = higher seniority for novelty attribution). All entries must
     share the same ``target_id``.
 
-    Degenerate decompositions (sole subgoal == target statement) are excluded
-    before computing Jaccard consensus; if all decompositions are degenerate,
-    ``consensus_score`` and ``hardness_score`` are ``None``.
+    Degenerate decompositions (sole subgoal == target statement) and invalid
+    non-degenerate outputs (trivial tautologies, reference-only) are excluded
+    before computing Jaccard consensus. If fewer than 2 valid decompositions
+    remain, ``consensus_score`` and ``hardness_score`` are ``None``.
 
     Raises:
         ValueError: If *decompositions* is empty.
@@ -351,13 +381,18 @@ def compute_consensus(
         raise ValueError("compute_consensus requires at least one decomposition")
 
     n_degenerate = sum(1 for d in decompositions if is_degenerate(d))
-    real = [d for d in decompositions if not is_degenerate(d)]
+    n_invalid = sum(
+        1 for d in decompositions
+        if not is_degenerate(d) and not _is_valid_for_consensus(d)
+    )
+    real = [d for d in decompositions if _is_valid_for_consensus(d)]
 
     if not real:
         return ConsensusResult(
             problem_id=problem_id,
             n_models=len(decompositions),
             n_degenerate=n_degenerate,
+            n_invalid=n_invalid,
             consensus_score=None,
             hardness_score=None,
             novel_statements=frozenset(),
@@ -378,11 +413,12 @@ def compute_consensus(
         # Cannot compute cross-model agreement with a single real decomposition.
         # Return None rather than the pairwise_jaccard default of 1.0 (which
         # would imply "trivially tractable" — a false signal when only one model
-        # produced a non-degenerate result).
+        # produced a valid result).
         return ConsensusResult(
             problem_id=problem_id,
             n_models=len(decompositions),
             n_degenerate=n_degenerate,
+            n_invalid=n_invalid,
             consensus_score=None,
             hardness_score=None,
             novel_statements=frozenset(novel),
@@ -394,6 +430,7 @@ def compute_consensus(
         problem_id=problem_id,
         n_models=len(decompositions),
         n_degenerate=n_degenerate,
+        n_invalid=n_invalid,
         consensus_score=consensus,
         hardness_score=1.0 - consensus,
         novel_statements=frozenset(novel),

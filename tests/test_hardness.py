@@ -616,3 +616,108 @@ def test_reference_only_true_not_flagged():
     # 'True' is a tautology, not a bare identifier reference
     d = _decomp("goldbach", ["True"], target_statement=GOLDBACH)
     assert is_reference_only(d) is False
+
+
+# --- validity gate (compute_consensus excludes tautology + reference-only) ------
+
+
+def test_validity_gate_tautology_excluded_from_jaccard():
+    # Twin-primes pattern: gemma4-e4b produces "True", qwen3.5 produces real subgoals.
+    # The tautology must not participate in Jaccard — it would inflate hardness spuriously
+    # because {True} shares no tokens with real propositions.
+    tautology = _decomp("twin-primes", ["True"], target_statement=TWIN_PRIMES)
+    real = _decomp(
+        "twin-primes",
+        ["∃ p, Nat.Prime p ∧ Nat.Prime (p + 2)", "p > N"],
+        target_statement=TWIN_PRIMES,
+    )
+    r = compute_consensus("twin-primes", [tautology, real])
+    assert r.n_degenerate == 0
+    assert r.n_invalid == 1  # tautology excluded
+    assert r.n_models == 2
+    # Only one valid model after exclusion → consensus undefined, not 1.0 (trivially same)
+    assert r.consensus_score is None
+    assert r.hardness_score is None
+    # Novel statements come from the valid model only
+    assert "∃ p, Nat.Prime p ∧ Nat.Prime (p + 2)" in r.novel_statements
+    assert "True" not in r.novel_statements
+
+
+def test_validity_gate_reference_only_excluded_from_jaccard():
+    # Goldbach pattern: gemma4-e4b produces ["lemma_3"], gemma4-e2b produces real subgoals.
+    # Without the gate, Jaccard({"lemma_3"}, {∃ k, …, ∃ p, …}) = 0 → hardness=1.0 (spurious).
+    # With the gate, reference-only is excluded; only 1 valid model remains → hardness=None.
+    ref_only = _decomp("goldbach", ["lemma_3"], target_statement=GOLDBACH)
+    structured = _decomp(
+        "goldbach",
+        ["∃ k : ℤ, n = 2 * k", "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"],
+        target_statement=GOLDBACH,
+    )
+    r = compute_consensus("goldbach", [ref_only, structured])
+    assert r.n_degenerate == 0
+    assert r.n_invalid == 1  # reference-only excluded
+    assert r.n_models == 2
+    assert r.consensus_score is None  # only 1 valid model
+    assert r.hardness_score is None
+    assert "∃ k : ℤ, n = 2 * k" in r.novel_statements
+    assert "lemma_3" not in r.novel_statements
+
+
+def test_validity_gate_both_tautology_and_reference_excluded():
+    # Mixed invalid outputs: one tautology, one reference-only, two structured.
+    # n_invalid should count both; Jaccard should use only the structured pair.
+    tautology = _decomp("goldbach", ["True"], target_statement=GOLDBACH)
+    ref_only = _decomp("goldbach", ["lemma_3"], target_statement=GOLDBACH)
+    s1 = _decomp("goldbach", ["∃ k : ℤ, n = 2 * k", "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"], target_statement=GOLDBACH)
+    s2 = _decomp("goldbach", ["∃ k : ℤ, n = 2 * k", "n = p + q"], target_statement=GOLDBACH)
+    r = compute_consensus("goldbach", [tautology, ref_only, s1, s2])
+    assert r.n_degenerate == 0
+    assert r.n_invalid == 2  # tautology + reference-only
+    assert r.n_models == 4
+    # Two valid structured models → Jaccard computed on {∃ k : ℤ, n = 2 * k, ∃ p, …} vs {∃ k : ℤ, n = 2 * k, n = p + q}
+    # intersection = {∃ k : ℤ, n = 2 * k}, union = 3 → Jaccard = 1/3
+    assert r.consensus_score == pytest.approx(1 / 3)
+    assert r.hardness_score == pytest.approx(2 / 3)
+
+
+def test_validity_gate_all_invalid_returns_none():
+    # All outputs are tautology or reference-only → no valid models → hardness undefined.
+    tautology = _decomp("goldbach", ["True"], target_statement=GOLDBACH)
+    ref_only = _decomp("goldbach", ["lemma_3"], target_statement=GOLDBACH)
+    r = compute_consensus("goldbach", [tautology, ref_only])
+    assert r.n_degenerate == 0
+    assert r.n_invalid == 2
+    assert r.consensus_score is None
+    assert r.hardness_score is None
+    assert r.novel_statements == frozenset()
+
+
+def test_validity_gate_goldbach_pattern():
+    # Full Goldbach case from beat 909/910: degenerate (qwen3.5) + reference-only (gemma4-e4b)
+    # + structured-misdirected (gemma4-e2b). Spurious hardness was 1.0; after gate: None.
+    degenerate = _decomp("goldbach", [GOLDBACH], target_statement=GOLDBACH)
+    ref_only = _decomp("goldbach", ["lemma_3"], target_statement=GOLDBACH)
+    misdirected = _decomp(
+        "goldbach",
+        ["∃ k : ℤ, n = 2 * k", "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"],
+        target_statement=GOLDBACH,
+    )
+    r = compute_consensus("goldbach", [degenerate, ref_only, misdirected])
+    assert r.n_degenerate == 1
+    assert r.n_invalid == 1  # ref_only
+    assert r.n_models == 3
+    # Only misdirected passes the gate — 1 valid model → hardness undefined
+    assert r.consensus_score is None
+    assert r.hardness_score is None
+
+
+def test_validity_gate_n_invalid_zero_for_normal_structured_outputs():
+    # Standard case: two structured outputs with no tautologies or reference-only.
+    # n_invalid must be 0.
+    s1 = _decomp("twin-primes", ["∃ p, Nat.Prime p ∧ Nat.Prime (p + 2)", "p > N"], target_statement=TWIN_PRIMES)
+    s2 = _decomp("twin-primes", ["Nat.Prime p", "Nat.Prime (p + 2)"], target_statement=TWIN_PRIMES)
+    r = compute_consensus("twin-primes", [s1, s2])
+    assert r.n_degenerate == 0
+    assert r.n_invalid == 0
+    assert r.consensus_score is not None  # two valid models → Jaccard computed
+    assert r.hardness_score is not None

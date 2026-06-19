@@ -1137,3 +1137,44 @@ This is the same structural threat identified for structured-misdirected: the ha
 - 🔲 Validity gate for hardness metric: filter reference+tautology before Jaccard
 - 🔲 Structured-correct vs. structured-misdirected: needs semantic analysis layer
 - 🔲 Prompt engineering investigation: hold constant for now (see beat 907 rationale)
+
+### Validity gate: implemented (beat 910)
+
+**What changed:** `compute_consensus()` now filters tautology and reference-only outputs before Jaccard computation, in addition to the existing degenerate filter. `ConsensusResult` gains `n_invalid: int` to track the newly-excluded count.
+
+**Gate logic (`_is_valid_for_consensus()`):** A decomposition is valid if:
+- Not degenerate (already filtered)
+- Not trivial tautology (`all subgoals ∈ {True, ⊤, trivial}`)
+- Not reference-only (all subgoals are bare identifiers like `lemma_3`, `h1`)
+
+6 new tests, 215 total passing. Commits in phyter1/proving-ground.
+
+**Effect on Goldbach data:**
+
+Before gate:
+- degenerate (qwen3.5 × 9), reference-only (gemma4-e4b × 3), structured (gemma4-e2b × 3)
+- Jaccard({lemma_3}, {∃ k, n = 2*k, ∃ p, Nat.Prime p ...}) = 0 → hardness = 1.0 (spurious)
+
+After gate:
+- n_degenerate=9, n_invalid=3 (reference-only excluded), valid = gemma4-e2b × 3
+- All 3 gemma4-e2b outputs are identical → Jaccard = 1.0 → hardness = 0.0
+
+**New finding: same-model deduplication needed.** After filtering, only one model family (gemma4-e2b) contributes valid outputs — but it appears 3× (once per collection run). Jaccard between three identical outputs from the same model is trivially 1.0, not meaningful cross-model signal. The hardness=0.0 is also spurious, just in the opposite direction.
+
+**The correct signal:** When fewer than 2 distinct model families remain after the validity gate, hardness should be `None` (insufficient model diversity), not computed from same-model multiple runs. This is a separate gate from the validity gate: a *diversity gate*.
+
+**Planned:** `compute_consensus()` should accept model labels alongside decompositions and require ≥2 distinct model families for a valid Jaccard computation. Without this, the validity gate is necessary but not sufficient — it removes bad outputs but doesn't prevent trivial-consensus from same-model repetition.
+
+**Why not implemented this beat:** The diversity gate requires changing the `compute_consensus()` signature (or a new function) and the call sites in the broader benchmark infrastructure. The validity gate is a self-contained fix that unblocks the diversity finding by making the new failure mode visible. Ship in order.
+
+### Collection status at beat 910
+
+- ✅ gemma4-e2b on Goldbach: filled via ren3-e2b config (ren2 timeout bypassed)
+- ✅ Raw response capture: implemented in collector.py + run_collect.py
+- ✅ Anchor-richness gradient direction confirmed for structured rate
+- ✅ Five-way classifier: degenerate / confusion / tautology / reference / structured
+- ✅ gemma4-e4b-mlx on Goldbach correctly reclassified as reference (was structured)
+- ✅ Validity gate: filter reference+tautology before Jaccard (`n_invalid` field added)
+- 🔲 Diversity gate: require ≥2 distinct model families before computing Jaccard
+- 🔲 Structured-correct vs. structured-misdirected: needs semantic analysis layer
+- 🔲 Prompt engineering investigation: hold constant for now (see beat 907 rationale)
