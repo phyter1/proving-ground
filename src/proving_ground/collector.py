@@ -15,10 +15,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from proving_ground.checker import ProofArtifact
-from proving_ground.extract import ExtractionError
+from proving_ground.extract import ExtractionError, build_prompt, extract_artifact
 from proving_ground.hardness import ConsensusResult, compute_consensus
 from proving_ground.models import Decomposition, Problem, Subgoal
-from proving_ground.runner import ModelRunner, RunnerError, attempt
+from proving_ground.runner import ModelRunner, RunnerError
 
 # Bracket-depth type extractor — same logic as corpus._extract_statement; duplicated
 # here to avoid importing private symbols from that module.
@@ -108,12 +108,16 @@ class CollectionResult:
         errors: ``(model_name, message)`` pairs for failed attempts. Surfaced, never
             swallowed — partial collections (errors alongside successful entries)
             are expected when the fleet has mixed availability.
+        raw_responses: ``(model_name, raw_text)`` pairs for all models that returned
+            a response, including those whose response could not be extracted into an
+            artifact. Useful for inspecting token-exceeded and other parse failures.
     """
 
     problem_id: str
     entries: tuple[tuple[str, Decomposition], ...]
     consensus: ConsensusResult | None
     errors: tuple[tuple[str, str], ...]
+    raw_responses: tuple[tuple[str, str], ...] = ()
 
 
 def collect(
@@ -131,13 +135,19 @@ def collect(
     """
     entries: list[tuple[str, Decomposition]] = []
     errors: list[tuple[str, str]] = []
+    raw_responses: list[tuple[str, str]] = []
 
+    messages = build_prompt(problem)
     for runner in runners:
         try:
-            artifact = attempt(problem, runner)
+            raw_text = runner.complete(messages)
+            raw_responses.append((runner.name, raw_text))
+            artifact = extract_artifact(problem, raw_text)
             decomp = artifact_to_unverified_decomposition(artifact)
             entries.append((runner.name, decomp))
-        except (RunnerError, ExtractionError) as exc:
+        except RunnerError as exc:
+            errors.append((runner.name, str(exc)))
+        except ExtractionError as exc:
             errors.append((runner.name, str(exc)))
         except Exception as exc:  # noqa: BLE001 — per-runner failure should not abort the batch
             errors.append((runner.name, f"{type(exc).__name__}: {exc}"))
@@ -152,6 +162,7 @@ def collect(
         entries=tuple(entries),
         consensus=consensus,
         errors=tuple(errors),
+        raw_responses=tuple(raw_responses),
     )
 
 

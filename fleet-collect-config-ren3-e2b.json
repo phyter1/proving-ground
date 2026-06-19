@@ -1,0 +1,17 @@
+{
+  "models": [
+    {
+      "name": "ren3/gemma4-e2b-mlx",
+      "model": "mlx-community/gemma-4-e2b-it-4bit",
+      "base_url": "http://ren3.local:8080/v1",
+      "extra_body": {"max_tokens": 2048}
+    },
+    {
+      "name": "ren3/qwen3.5-9b-mlx",
+      "model": "mlx-community/Qwen3.5-9B-MLX-4bit",
+      "base_url": "http://ren3.local:8080/v1",
+      "extra_body": {"max_tokens": 2048}
+    }
+  ],
+  "_note": "Gemma-4-E2B + Qwen3.5-9B, both on ren3 MLX. E2B is the Tier 2 model whose Goldbach behavior is the missing cell in the anchor-richness gradient test (Collatz=confusion, Legendre=25% structured, twin-primes=structured). Sequential execution forces model swap between runs. E2B available on ren3 as mlx-community/gemma-4-e2b-it-4bit."
+}

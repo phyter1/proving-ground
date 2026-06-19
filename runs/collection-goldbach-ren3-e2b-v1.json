@@ -1,0 +1,40 @@
+{
+  "problem_id": "goldbach",
+  "target_statement": "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n",
+  "n_models": 2,
+  "n_degenerate": 1,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": null,
+    "hardness_score": null,
+    "novel_statements": [
+      "∃ k : ℤ, n = 2 * k",
+      "∃ p : ℕ, Nat.Prime p ∧ p > 1 ∧ p ∣ n",
+      "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "n_subgoals": 4,
+      "subgoals": [
+        "∃ k : ℤ, n = 2 * k",
+        "∃ p : ℕ, Nat.Prime p ∧ p > 1 ∧ p ∣ n",
+        "∃ p : ℕ, Nat.Prime p ∧ p ∣ n",
+        "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren3/qwen3.5-9b-mlx",
+      "n_subgoals": 1,
+      "subgoals": [
+        "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n"
+      ],
+      "is_degenerate": true,
+      "is_confusion": false
+    }
+  ],
+  "errors": []
+}

@@ -79,6 +79,9 @@ def _run_once(problem: Problem, runners: list[OpenAICompatibleRunner], out_path:
 
     result = collect(problem, runners)
 
+    _raw_map = dict(result.raw_responses)
+    _RAW_TRUNCATE = 3000
+
     output = {
         "problem_id": result.problem_id,
         "target_statement": problem.statement,
@@ -101,6 +104,14 @@ def _run_once(problem: Problem, runners: list[OpenAICompatibleRunner], out_path:
             for name, d in result.entries
         ],
         "errors": [{"model": m, "error": e} for m, e in result.errors],
+        "raw_responses": [
+            {
+                "model": name,
+                "truncated": len(text) > _RAW_TRUNCATE,
+                "text": text[:_RAW_TRUNCATE],
+            }
+            for name, text in result.raw_responses
+        ],
     }
 
     out_path.parent.mkdir(parents=True, exist_ok=True)

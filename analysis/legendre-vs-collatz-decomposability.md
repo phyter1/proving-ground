@@ -1006,3 +1006,96 @@ parser (option 3 from beat 905 analysis), but that infrastructure doesn't exist 
 - 🔲 gemma4-e2b on Goldbach: still missing (ren2 CPU timeouts, no fix yet)
 - 🔲 Raw response capture: needed to inspect full Lean content before budget exhaustion
 - 🔲 Prompt engineering investigation: should benchmarks restrict comment preamble?
+
+---
+
+## Goldbach e2b: missing cell filled, classifier gap found (beat 908, 2026-06-19)
+
+### gemma4-e2b on Goldbach (ren3 MLX)
+
+ren2/gemma4-e2b was blocked by CPU timeout on all prior Goldbach attempts. `fleet-collect-config-ren3-e2b.json` routes gemma4-e2b through ren3 MLX (`mlx-community/gemma-4-e2b-it-4bit`, confirmed available on ren3). k=3 runs: `collection-goldbach-ren3-e2b-v1.json` through `v3.json`.
+
+**All three runs identical (temperature=0):**
+
+```
+gemma4-e2b-mlx subgoals:
+  ∃ k : ℤ, n = 2 * k
+  ∃ p : ℕ, Nat.Prime p ∧ p > 1 ∧ p ∣ n
+  ∃ p : ℕ, Nat.Prime p ∧ p ∣ n
+  ∃ p : ℕ, Nat.Prime p ∧ p ∣ n
+```
+
+`is_degenerate: false`, `is_confusion: false`. The classifier calls this **structured** (3/3).
+
+### The misdirected decomposition pattern
+
+The model is NOT confused in the prior sense (spurious conjuncts, trivial base cases). It generates well-formed Lean existentials that are mathematically coherent. But they don't decompose toward Goldbach:
+
+- Goldbach requires: show `∃ p q, Prime p ∧ Prime q ∧ p + q = n`
+- e2b generates: show `∃ p, Prime p ∧ p ∣ n` (prime divisor of n)
+
+The model correctly identifies the domain (even numbers, primes) but confuses the relation: "find two primes that SUM to n" vs. "find a prime that DIVIDES n." The subgoals are neither restating the target nor adding spurious constraints — they're genuinely structured, just wrong in direction.
+
+The four subgoal pattern (evenness + prime-divisor × 3) is stable and deterministic. It looks like the model is mapping Goldbach to a prime factorization problem template rather than a Waring-type representation problem.
+
+### Anchor-richness gradient: direction confirmed, quality not captured
+
+**Tier 2 (gemma4-e2b) cross-problem structured rates:**
+
+| Problem | Anchor richness | N | Struct | StructRate | Notes |
+|---------|----------------|---|--------|------------|-------|
+| Collatz | sparse (n=1 only) | 2 | 0 | 0% | Confusion |
+| Legendre | moderate (Bertrand) | 4 | 1 | 25% | Near-boundary; 1 correct |
+| Goldbach | moderate (Chen, Vinogradov) | 3 | 3 | 100% | All structured, but misdirected |
+| Twin primes | rich (GPY, Maynard) | 3 | 3 | 100% | Structured and correct |
+
+The gradient direction holds: richer anchors → higher structured rate. Collatz (0%) → Goldbach/Twin-primes (100%). But the quality of "structured" outputs varies:
+
+- Legendre v1: existence-in-interval + primality split → **correct decomposition direction** (interval structure maps to Bertrand gap)
+- Goldbach e2b: prime divisor subgoals → **wrong decomposition direction** (divisor ≠ sum)
+- Twin-primes e2b: GPY-style unboundedness subgoals → **correct decomposition direction**
+
+**The classifier gap:** The three-way (degenerate/confusion/structured) measures structural novelty, not decomposition correctness. Goldbach and twin-primes both show 100% structured rate, but Goldbach structured outputs are mathematically misdirected and twin-primes structured outputs are directionally correct.
+
+### Structured-correct vs. structured-misdirected: a fourth quality level
+
+The current taxonomy needs a fourth level above "structured":
+
+| Level | What it captures | Detection |
+|-------|-----------------|-----------|
+| degenerate | No decomposition strategy | Token containment check |
+| confusion | Strategy but wrong target reference | Prefix/echo checks |
+| structured | Novel subgoals, no target-echoing | Pass degenerate + confusion checks |
+| **structured-correct** | Novel subgoals that decompose toward the target | Requires semantic analysis |
+
+`structured-correct` requires knowing what a valid decomposition looks like — either:
+1. A theorem-name index (does the subgoal reference a known partial result?)
+2. A structural match against the target (do the subgoals together imply the target type?)
+3. Manual classification at this scale
+
+At the current scale (3 problems × 3 model variants × 5 runs), manual classification is feasible. The distinguishing test for Goldbach: does the subgoal set contain `p + q = n` or equivalent? If not, the model is decomposing adjacent mathematical facts, not the conjecture.
+
+### Cross-problem rate table (updated, beat 908)
+
+**Tier 2 (gemma4-e2b), all data:**
+
+| Problem | N | Deg | Conf | Struct | StructRate |
+|---------|---|-----|------|--------|------------|
+| Collatz | 2 | 0 | 2 | 0 | 0% |
+| Legendre | 4 | 3 | 0 | 1 | 25% |
+| Goldbach | 3 | 0 | 0 | 3 | 100% (misdirected) |
+| Twin primes | 3 | 0 | 0 | 3 | 100% (correct) |
+
+The anchor-richness hypothesis is confirmed as a structural novelty predictor. It is not yet confirmed as a decomposition-correctness predictor — Goldbach shows that anchors drive structured output but not necessarily *the right* structured output.
+
+### Raw response capture: implemented (beat 908)
+
+`collector.py` now returns `raw_responses: tuple[tuple[str, str], ...]` alongside entries and errors. `run_collect.py` writes these to the JSON output (truncated to 3000 chars). Future collection runs will include the full model response for inspection — enabling direct review of comment-essay content on Legendre and the actual Lean tactics on Goldbach.
+
+### Collection status at beat 908
+
+- ✅ gemma4-e2b on Goldbach: filled via ren3-e2b config (ren2 timeout bypassed)
+- ✅ Raw response capture: implemented in collector.py + run_collect.py
+- ✅ Anchor-richness gradient direction confirmed for structured rate
+- 🔲 Structured-correct vs. structured-misdirected: needs semantic analysis layer
+- 🔲 Prompt engineering investigation: hold constant for now (see beat 907 rationale)
