@@ -446,18 +446,39 @@ gate criterion (2 named theorems in Mathlib or widely cited) is a cheap pre-filt
 The `literature_anchors` field is already in `benchmark-v1.json` for all open-tier problems.
 The `decomposability_prediction` metadata field is also present for all open-tier problems.
 
-**Next implementation steps (priority order):**
+**Implementation status (as of beat 902, 2026-06-19):**
 
-1. **Confusion-detection check in hardness.py** — add `is_confusion_non_degenerate(decomp,
-   target)` that returns True when a non-degenerate subgoal contains the full target statement
-   as a substring or subformula. This catches the gpt-oss spurious-constraint pattern
-   (`target ∧ extra_condition`) automatically.
+1. ✅ **Confusion-detection check in hardness.py** — `is_confusion_non_degenerate()` implemented
+   (beat 900). Detects: (a) target-prefix-plus-extra-conjunct, (b) whitespace-collapsed prefix,
+   (c) echo-containing multi-subgoal. 56 tests passing, 1 xfail (alpha-equivalence). Commits
+   `368ccbb`, `8f44531`.
 
-2. **Structured-detection check** — add `is_structured(decomp, problem)` that checks
-   subgoals against `problem.literature_anchors` patterns. For Legendre: look for
-   existence-in-interval subgoal separate from primality subgoal (gemma4 v1 pattern).
-   Requires defining `decomposition_patterns` per problem or using syntactic analysis.
+2. ⏳ **Structured-detection check** — not yet automated. Manual classification remains the
+   current path. Requires defining `decomposition_patterns` per problem against
+   `literature_anchors`. Blocked until more data informs which patterns to match.
 
-3. **Three-way output from compute_rates.py** — once the classifier is implemented,
-   the rate script can produce degenerate/structured/confusion counts automatically,
-   removing the need for manual classification at scale.
+3. ✅ **Three-way output from compute_rates.py** — `--three-way` flag implemented (beat 900).
+   Produces degenerate/structured/confusion counts per model per problem. Commit `368ccbb`.
+
+**Corpus schema update (beat 902, 2026-06-19):**
+
+`decomposition_type` field added to all 10 problems in `benchmark-v1.json`. Values:
+- `conjunction` (3 problems: calib-add-identities, calib-mul-identities, tractable-consecutive)
+- `disjunction` (1 problem: tractable-even-or-odd)
+- `universal-predicate` (1 problem: tractable-even-product)
+- `existential` (5 problems: tractable-prime-gaps, collatz, legendre, twin-primes, goldbach)
+
+This enables corpus pre-filtering: select only `decomposition_type = "conjunction"` for
+calibration baselines. Open-tier problems are all `existential` — the metric's discriminating
+axis is anchor richness within that class.
+
+**Active collection runs (beat 902, 2026-06-19):**
+
+- Collatz k=3, 2-model config (`fleet-collect-config-ren1-2model.json`): in flight.
+  Prediction: high degeneracy rate for both qwen3.5 (robust restater) and gemma4 (no Collatz
+  anchor → confusion or degenerate). Structured rate expected: 0%.
+- Goldbach k=3, 2-model config: in flight. Prediction: gemma4 may produce structured output
+  via Chen path (every large even = p + p2) or Vinogradov path. Lower degeneracy rate than
+  Collatz predicted for gemma4.
+
+Results pending. Update doc when runs complete.

@@ -3,6 +3,7 @@
     "id": "calib-add-identities",
     "statement": "∀ n : ℕ, n + 0 = n ∧ 0 + n = n",
     "tier": "solved_recent",
+    "decomposition_type": "conjunction",
     "source": "proving-ground/benchmark-v1",
     "title": "Additive identities",
     "references": [],
@@ -16,6 +17,7 @@
     "id": "calib-mul-identities",
     "statement": "∀ n : ℕ, n * 1 = n ∧ 1 * n = n",
     "tier": "solved_recent",
+    "decomposition_type": "conjunction",
     "source": "proving-ground/benchmark-v1",
     "title": "Multiplicative identities",
     "references": [],
@@ -29,6 +31,7 @@
     "id": "tractable-consecutive",
     "statement": "∀ n : ℕ, n ≤ n + 1 ∧ 2 ∣ n * (n + 1)",
     "tier": "weakly_open",
+    "decomposition_type": "conjunction",
     "source": "proving-ground/benchmark-v1",
     "title": "Order + parity of consecutive integers",
     "references": [],
@@ -42,6 +45,7 @@
     "id": "tractable-even-or-odd",
     "statement": "∀ n : ℕ, Even n ∨ Odd n",
     "tier": "weakly_open",
+    "decomposition_type": "disjunction",
     "source": "proving-ground/benchmark-v1",
     "title": "Every natural is even or odd",
     "references": [],
@@ -55,6 +59,7 @@
     "id": "tractable-even-product",
     "statement": "∀ n : ℕ, Even (n * (n + 1))",
     "tier": "weakly_open",
+    "decomposition_type": "universal-predicate",
     "source": "proving-ground/benchmark-v1",
     "title": "Product of consecutive integers is even",
     "references": [],
@@ -68,6 +73,7 @@
     "id": "tractable-prime-gaps",
     "statement": "∀ k : ℕ, ∃ n : ℕ, ∀ j : ℕ, 1 ≤ j → j ≤ k → ¬Nat.Prime (n + j)",
     "tier": "weakly_open",
+    "decomposition_type": "existential",
     "source": "proving-ground/benchmark-v1",
     "title": "Arbitrarily large prime gaps",
     "references": [
@@ -84,6 +90,7 @@
     "id": "collatz",
     "statement": "∀ n : ℕ, 0 < n → ∃ k : ℕ, Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k n = 1",
     "tier": "open",
+    "decomposition_type": "existential",
     "source": "proving-ground/benchmark-v1",
     "title": "Collatz Conjecture",
     "references": [
@@ -102,6 +109,7 @@
     "id": "legendre",
     "statement": "∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p",
     "tier": "open",
+    "decomposition_type": "existential",
     "source": "proving-ground/benchmark-v1",
     "title": "Legendre's Conjecture",
     "references": [
@@ -126,13 +134,15 @@
     "metadata": {
       "note": "genuinely open; there is always a prime between consecutive perfect squares",
       "difficulty": "one of Landau's four problems (1912), still unresolved",
-      "decomposability_prediction": "structured_null — Bertrand anchor enables multiple distinct decomposition strategies across model families; expect N_real ≥ 2, hardness ≠ null"
+      "decomposability_prediction": "structured_null — Bertrand anchor enables multiple distinct decomposition strategies across model families; expect N_real ≥ 2, hardness ≠ null",
+      "decomposition_note": "∧ appears inside the ∃ scope (the witness conditions), not at the outer quantifier level — models decompose via the ∃-structure (Bertrand anchor), not by splitting conjunction"
     }
   },
   {
     "id": "twin-primes",
     "statement": "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)",
     "tier": "open",
+    "decomposition_type": "existential",
     "source": "proving-ground/benchmark-v1",
     "title": "Twin Prime Conjecture",
     "references": [
@@ -169,6 +179,7 @@
     "id": "goldbach",
     "statement": "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n",
     "tier": "open",
+    "decomposition_type": "existential",
     "source": "proving-ground/benchmark-v1",
     "title": "Goldbach's Conjecture",
     "references": [
