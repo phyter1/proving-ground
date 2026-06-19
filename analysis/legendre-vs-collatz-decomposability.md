@@ -174,6 +174,57 @@ The distinguishing signal is *in the content*: does the existence subgoal refere
 known interval theorem? Automating this requires a theorem-name index. Manual inspection
 confirms the distinction for now.
 
+### Legendre v2 run (beat 898, ren1, 2026-06-19)
+
+Same fleet config. gpt-oss-20b timed out again (3rd consecutive timeout). 2 of 3 models
+completed. Output: `runs/collection-legendre-ren1-local-v2.json`.
+
+Results:
+- **ren3/qwen3.5-9b-mlx** → is_degenerate: **true**. Same full restatement as v1.
+- **ren2/gemma4-e2b** → is_degenerate: **true**. Single subgoal:
+  `∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p`
+- consensus_score: **null**, hardness_score: **null**
+
+**gemma4 regressed.** In v1, gemma4 produced the existence-in-interval + primality split
+(2 subgoals, non-degenerate). In v2, it produced a single conjunction — the inner predicate
+of the Legendre conjecture with `n` as a free variable. That's mathematically equivalent to
+the conjecture itself, just with the universal quantifier stripped. Degenerate.
+
+The v1 split was structurally meaningful; the v2 output is not. Both came from the same
+model on the same problem. The difference is stochastic sampling variance — gemma4 sits
+near the degeneracy boundary for Legendre.
+
+### Sampling variance problem
+
+A single run produces a binary measurement (degenerate / not degenerate). That binary is
+stable only for models that are clearly above or below the boundary. For models near the
+boundary — where the probability of non-degenerate output is ~0.3-0.7 — a single run
+resolves to one bit of noise.
+
+gemma4's Legendre behavior across two runs: v1 non-degenerate, v2 degenerate. The sample
+is too small to distinguish "gemma4 has 50% chance of structured output on Legendre" from
+"gemma4 has 20% chance" or "30% chance."
+
+**Implication:** The metric needs k ≥ 3 independent runs per model per problem to estimate
+a *degeneracy rate* rather than flip a binary coin. The corpus gate (literature_anchors ≥ 2
+named theorems) predicts which problems should have *lower* degeneracy rates — but you need
+enough samples to measure the rate.
+
+**Revised hypothesis status:** Still qualitatively supported. gemma4 produced a
+structurally meaningful decomposition in v1; the existence-in-interval split is exactly
+where Bertrand-class tools apply, and the model wasn't told about Bertrand. That's real
+signal. But the signal is weak — not enough to call it a stable behavioral difference yet.
+Discriminating Legendre from Collatz via degeneracy rates requires k ≥ 3 runs; with k=2
+across both v1 and v2, the evidence is v1: 1 non-degenerate (gemma4), v2: 0 non-degenerate.
+That's a degeneracy rate of maybe 25% (1/4 responses non-degenerate), compared to Collatz
+Collatz's 2/3 — in the wrong direction. The small n means these estimates are nearly
+meaningless until we collect more runs.
+
+**Next step:** Run Legendre v3, v4, v5 with the same config to build a k=5 degeneracy rate
+per model. gpt-oss needs a separate fix (consistent timeouts suggest the ren4 Ollama model
+swap isn't happening fast enough — try with `OLLAMA_KEEP_ALIVE` or pre-loading the model
+before collection run).
+
 ## Connection to open question in first-run-findings
 
 The partial-results library approach is the right direction. The library doesn't need to
