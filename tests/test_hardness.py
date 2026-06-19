@@ -535,7 +535,7 @@ def test_alpha_equivalent_subgoals_reach_consensus():
 
 # --- is_trivial_tautology ---------------------------------------------------
 
-from proving_ground.hardness import is_trivial_tautology
+from proving_ground.hardness import is_reference_only, is_trivial_tautology
 
 TWIN_PRIMES = "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)"
 
@@ -569,3 +569,50 @@ def test_trivial_tautology_mixed_subgoals_not_flagged():
     # If any subgoal is not a tautology, not flagged
     d = _decomp("twin-primes", ["True", "∃ p, Nat.Prime p"], target_statement=TWIN_PRIMES)
     assert is_trivial_tautology(d) is False
+
+
+# --- is_reference_only -------------------------------------------------------
+
+GOLDBACH = "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n"
+
+
+def test_reference_only_bare_lemma_id():
+    # gemma4-e4b-mlx on Goldbach: sole subgoal is the identifier 'lemma_3'
+    d = _decomp("goldbach", ["lemma_3"], target_statement=GOLDBACH)
+    assert is_reference_only(d) is True
+
+
+def test_reference_only_short_hypothesis():
+    # 'h1' — a bare hypothesis name, not a proposition
+    d = _decomp("goldbach", ["h1"], target_statement=GOLDBACH)
+    assert is_reference_only(d) is True
+
+
+def test_reference_only_all_identifiers():
+    # All subgoals are bare identifiers
+    d = _decomp("goldbach", ["lemma_3", "h1"], target_statement=GOLDBACH)
+    assert is_reference_only(d) is True
+
+
+def test_reference_only_mixed_identifier_and_proposition():
+    # At least one real proposition → not reference-only
+    d = _decomp("goldbach", ["lemma_3", "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"], target_statement=GOLDBACH)
+    assert is_reference_only(d) is False
+
+
+def test_reference_only_genuine_subgoal_not_flagged():
+    # A real proposition should not be flagged
+    d = _decomp("goldbach", ["∃ p : ℕ, Nat.Prime p ∧ p ∣ n"], target_statement=GOLDBACH)
+    assert is_reference_only(d) is False
+
+
+def test_reference_only_degenerate_not_flagged():
+    # Degenerate outputs return False (target restatement, not reference)
+    d = _decomp("goldbach", [GOLDBACH], target_statement=GOLDBACH)
+    assert is_reference_only(d) is False
+
+
+def test_reference_only_true_not_flagged():
+    # 'True' is a tautology, not a bare identifier reference
+    d = _decomp("goldbach", ["True"], target_statement=GOLDBACH)
+    assert is_reference_only(d) is False

@@ -23,6 +23,12 @@ from typing import Sequence
 
 from proving_ground.models import Decomposition
 
+# Matches a single Lean identifier token: starts with a letter or underscore,
+# followed by zero or more letters, digits, underscores, or apostrophes.
+# A bare identifier like 'lemma_3' or 'h1' matches; a proposition like
+# '∃ p, Nat.Prime p' does not because it contains spaces and operators.
+_LEAN_IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_']*$")
+
 # Matches one or more leading '∀ <vars> : <type>, ' blocks.
 # Stripping these lets '∀ n : ℕ, n + 0 = n' and 'n + 0 = n' compare as identical —
 # a model that echoes the target with quantifiers stripped has still not decomposed anything.
@@ -236,6 +242,48 @@ def is_trivial_tautology(decomp: Decomposition) -> bool:
     return all(
         sg.statement.strip() in _TRIVIAL_TAUTOLOGY_STATEMENTS for sg in decomp.subgoals
     )
+
+
+def _is_bare_identifier(stmt: str) -> bool:
+    """Return True if *stmt* looks like a Lean identifier, not a proposition.
+
+    Catches the extraction-fallback pattern: when the model writes a subgoal
+    reference without a type annotation (e.g. ``have lemma_3 := sorry`` with
+    no ``: <type>``), the collector falls back to the identifier itself as the
+    statement string. A bare identifier contains no Lean operators or whitespace.
+
+    Tautology keywords (``True``, ``⊤``, ``trivial``) are excluded — they are
+    valid Lean expressions classified separately by :func:`is_trivial_tautology`.
+
+    Examples that match: ``lemma_3``, ``h1``, ``hq``, ``rfl``.
+    Examples that don't match: ``∃ p, Nat.Prime p``, ``True``, ``n + 0 = n``.
+    """
+    stripped = stmt.strip()
+    if stripped in _TRIVIAL_TAUTOLOGY_STATEMENTS:
+        return False
+    return bool(_LEAN_IDENTIFIER_RE.match(stripped))
+
+
+def is_reference_only(decomp: Decomposition) -> bool:
+    """Return True when all subgoals are bare identifiers rather than propositions.
+
+    Catches the extraction-fallback pattern: the model referenced lemmas by name
+    (e.g. ``lemma_3``) without providing type signatures, so the extractor fell
+    back to the identifier as the statement. The decomposition contributes no
+    mathematical content.
+
+    Distinct from :func:`is_trivial_tautology` (model stated a vacuously-true
+    proposition like ``True``) — reference-only outputs never stated a proposition
+    at all.
+
+    Returns False for degenerate or empty decompositions.
+
+    Observed example: gemma4-e4b-mlx on Goldbach produced sole subgoal ``lemma_3``
+    across 3/3 runs (collection-goldbach-ren3-dual-v1 through v3).
+    """
+    if not decomp.subgoals or is_degenerate(decomp):
+        return False
+    return all(_is_bare_identifier(sg.statement) for sg in decomp.subgoals)
 
 
 def pairwise_jaccard(sets: Sequence[frozenset[str]]) -> float:
