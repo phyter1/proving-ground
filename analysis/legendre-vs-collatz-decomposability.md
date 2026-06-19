@@ -1178,3 +1178,34 @@ After gate:
 - 🔲 Diversity gate: require ≥2 distinct model families before computing Jaccard
 - 🔲 Structured-correct vs. structured-misdirected: needs semantic analysis layer
 - 🔲 Prompt engineering investigation: hold constant for now (see beat 907 rationale)
+
+### Diversity gate: implemented (beat 911)
+
+**What changed:** `compute_consensus()` now accepts an optional `model_ids: Sequence[str] | None` parallel parameter. When provided, it computes `n_distinct_models` — the count of distinct model IDs among valid (non-degenerate, non-invalid) decompositions. If `n_distinct_models < 2`, `consensus_score` and `hardness_score` are `None`. `ConsensusResult` gains `n_distinct_models: int` (`0` when IDs not provided, backward-compatible).
+
+`collector.py` passes `runner.name` strings as `model_ids`. All existing call sites without `model_ids` are unaffected (diversity gate inactive).
+
+6 new tests, 221 total passing. Commit bb317f9, pushed to phyter1/proving-ground.
+
+**Why model IDs, not families:** Distinct model IDs (exact names like `ren3/gemma4-e2b`) are the right granularity. `gemma4-e2b` and `gemma4-e4b` are different models and provide genuine cross-model diversity even though they're both Gemma4 variants. The relevant constraint is "not multiple runs of the same model," not "not the same architectural family."
+
+**Effect on Goldbach data:**
+
+After validity gate (beat 910): valid = gemma4-e2b × 3, n_distinct_models = 1
+→ Diversity gate fires → consensus_score = None, hardness_score = None ✅
+
+This is the correct result: insufficient model diversity for a meaningful hardness estimate.
+
+**What a meaningful Goldbach collection would look like:**
+- `ren3/gemma4-e2b` × 1 run producing `{∃ k : ℤ, n = 2 * k, ∃ p : ℕ, Nat.Prime p ∧ p ∣ n}`
+- `ren3/qwen3.5-9b-mlx` × 1 run producing a different decomposition
+- `n_distinct_models = 2` → diversity gate passes → meaningful Jaccard signal
+
+### Collection status at beat 911
+
+- ✅ Five-way classifier: degenerate / confusion / tautology / reference / structured
+- ✅ Validity gate: filter reference+tautology before Jaccard (`n_invalid` field added)
+- ✅ Diversity gate: require ≥2 distinct model IDs among valid decompositions (`n_distinct_models` field)
+- 🔲 Goldbach re-collection: run with 2+ distinct models to get a meaningful hardness score
+- 🔲 Structured-correct vs. structured-misdirected: needs semantic analysis layer
+- 🔲 Prompt engineering investigation: hold constant for now (see beat 907 rationale)
