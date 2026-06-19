@@ -1099,3 +1099,41 @@ The anchor-richness hypothesis is confirmed as a structural novelty predictor. I
 - ✅ Anchor-richness gradient direction confirmed for structured rate
 - 🔲 Structured-correct vs. structured-misdirected: needs semantic analysis layer
 - 🔲 Prompt engineering investigation: hold constant for now (see beat 907 rationale)
+
+### Reference-only: fifth classifier class (beat 909)
+
+Inspecting the Goldbach runs revealed a third kind of failure in what was previously labeled "structured":
+
+**gemma4-e4b-mlx on Goldbach** (3/3 runs): sole subgoal is `lemma_3` — a bare identifier, not a proposition. The extraction fallback in `collector.py:76` (`found.get(sg_id, sg_id)`) returns the subgoal ID itself when no type annotation was found in the model's generated code. The model wrote code referencing `lemma_3` without providing a `: <type>` signature.
+
+This is distinct from:
+- **Tautology** (`True`, `⊤`): model stated a vacuously-true proposition
+- **Structured-misdirected** (e2b Goldbach): model stated propositions in wrong mathematical direction
+- **Reference-only** (e4b Goldbach): model never stated a proposition at all — just referenced an undefined lemma
+
+**Implemented:** `is_reference_only()` in `hardness.py` — detects bare identifier subgoals via `_LEAN_IDENTIFIER_RE`. `compute_rates --three-way` now shows a `Ref` column. 7 new tests, 209 total passing. Commit 8556153.
+
+**Updated classifier taxonomy (five-way):**
+
+| Class | What it means | Observed example |
+|-------|--------------|------------------|
+| degenerate | Target restatement / near-restatement | qwen3.5 on all problems |
+| confusion | Spurious constraint / echo-containing | gpt-oss-20b on Goldbach |
+| tautology | Reduces to True / ⊤ | gemma4-e4b-mlx on twin-primes |
+| **reference** | Bare identifier, no proposition stated | gemma4-e4b-mlx on Goldbach |
+| structured | Novel subgoals, no other failure | gemma4-e2b on Goldbach (misdirected), gemma4-e2b on twin-primes (correct) |
+
+**Implication for hardness signal:** Both reference-only and tautology outputs inflate the hardness score when they appear alongside structured-correct outputs — Jaccard distance is maximized (the token sets share nothing). The inflated hardness score looks like "high difficulty" but is actually "model confusion." The metric needs a validity gate: filter reference-only and tautology outputs before computing Jaccard consensus.
+
+This is the same structural threat identified for structured-misdirected: the hardness signal conflates genuine mathematical difficulty with model failure modes.
+
+### Collection status at beat 909
+
+- ✅ gemma4-e2b on Goldbach: filled via ren3-e2b config (ren2 timeout bypassed)
+- ✅ Raw response capture: implemented in collector.py + run_collect.py
+- ✅ Anchor-richness gradient direction confirmed for structured rate
+- ✅ Five-way classifier: degenerate / confusion / tautology / reference / structured
+- ✅ gemma4-e4b-mlx on Goldbach correctly reclassified as reference (was structured)
+- 🔲 Validity gate for hardness metric: filter reference+tautology before Jaccard
+- 🔲 Structured-correct vs. structured-misdirected: needs semantic analysis layer
+- 🔲 Prompt engineering investigation: hold constant for now (see beat 907 rationale)
