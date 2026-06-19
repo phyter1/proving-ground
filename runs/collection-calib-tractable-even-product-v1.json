@@ -1,0 +1,74 @@
+{
+  "problem_id": "tractable-even-product",
+  "target_statement": "∀ n : ℕ, Even (n * (n + 1))",
+  "n_models": 3,
+  "n_degenerate": 0,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": 0.08333333333333333,
+    "hardness_score": 0.9166666666666666,
+    "n_invalid": 0,
+    "n_distinct_models": 3,
+    "novel_statements": [
+      "∀ n : ℕ, Even n → Even (n * (n + 1))",
+      "∀ n : ℕ, (n = 0) → Even (n * (n + 1))",
+      "∀ n : ℕ, Even (n + 1) → Even (n * (n + 1))",
+      "∀ n : ℕ, (Even n) → Even (n * (n + 1))",
+      "∀ n : ℕ, Odd n → Even (n * (n + 1))",
+      "∀ n : ℕ, (Odd n) → Even (n * (n + 1))",
+      "∀ n : ℕ, Odd n → Even (n + 1)"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "n_subgoals": 3,
+      "subgoals": [
+        "∀ n : ℕ, (Even n) → Even (n * (n + 1))",
+        "∀ n : ℕ, (Odd n) → Even (n * (n + 1))",
+        "∀ n : ℕ, (n = 0) → Even (n * (n + 1))"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "n_subgoals": 3,
+      "subgoals": [
+        "∀ n : ℕ, Even n → Even (n * (n + 1))",
+        "∀ n : ℕ, Odd n → Even (n + 1)",
+        "∀ n : ℕ, Odd n → Even (n * (n + 1))"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∀ n : ℕ, Even n → Even (n * (n + 1))",
+        "∀ n : ℕ, Even (n + 1) → Even (n * (n + 1))"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    }
+  ],
+  "errors": [],
+  "raw_responses": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "truncated": true,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: Product of consecutive integers is even if one is even.\ntheorem product_one_even : ∀ n : ℕ, (Even n) → Even (n * (n + 1)) :=\n  by\n    intro h\n    -- We use the property that if n is even, then n * (n+1) is even.\n    -- This is a direct consequence of the definition of evenness.\n    -- If n = 2k, then n(n+1) = 2k(2k+1), which is even.\n    -- The general proof relies on the fact that in any pair of consecutive integers, one is even.\n    -- Since the statement is about the product, we use the property that the product of two consecutive integers is always even.\n    -- We can prove this by considering the parity of n.\n    -- Case 1: n is even. Then n * (n+1) is even.\n    -- Case 2: n is odd. Then n+1 is even, so n * (n+1) is even.\n    -- Since the theorem statement is ∀ n, Even (n * (n + 1)), we need a proof that holds for all n.\n    -- The statement is true because the product of any two consecutive integers is always even.\n    -- We can prove this by induction on n, or by direct parity argument.\n    -- Let's use the fact that for any integer n, either n or n+1 is even.\n    -- If n is even, the product is even. If n is odd, n+1 is even, so the product is even.\n    -- This is a known property of consecutive integers.\n    -- We rely on the fact that the product of two consecutive integers is always divisible by 2.\n    -- Since we are in `ℕ`, we use the property that for any integer $n$, $n(n+1)$ is even.\n    -- This is equivalent to saying $n(n+1) \\equiv 0 \\pmod 2$.\n    -- This is true because $n(n+1) = 2 \\binom{n+1}{2}$.\n    -- Since $\\binom{n+1}{2}$ is an integer, $n(n+1)$ is even.\n    -- We use the fact that $n(n+1)$ is always divisible by 2.\n    -- This is equivalent to `le_div_2_of_product_of_consecutive_integers`.\n    -- Since we are in `ℕ`, we can use the fact that $n(n+1)$ is even.\n    -- We prove it by induction on $n$.\n    -- Base case $n=0$: $0 \\cdot 1 = 0$, which is even.\n    -- Inductive step: Assume $k(k+1)$ is even. We want $(k+1)(k+2)$ to be even.\n    -- This is not the right induction. We need to prove the statement directly.\n    -- The statement is true for all $n \\in \\mathbb{Z}$. Since we are in $\\mathbb{N}$, we assume the property holds.\n    -- We will prove it by induction on $n$.\n    -- Since the structure of the proof is complex without assuming properties of $\\mathbb{Z}$,\n    -- we rely on the fact that $n(n+1)$ is always even for $n \\in \\mathbb{Z}$.\n    -- Since $\\mathbb{N}$ contains $\\mathbb{Z}$ (via $0, 1, 2, \\dots$), this should hold.\n    -- We prove it by induction on $n$.\n    -- This requires working with parity, which is usually done in $\\mathbb{Z}$.\n    -- For $\\mathbb{N}$, we can use the fact that $n \\pmod 2$ determines the result.\n    -- We will prove it by induction on $n$.\n    sorry\n\n-- Lemma 2: Product of consecutive integers is even if one is odd. (This is redundant if Lemma 1 is proven, but we keep it for structure)\ntheorem product_one_odd : ∀ n : ℕ, (Odd n) → Even (n * (n + 1)"
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: If n is even, then n * (n + 1) is even.\ntheorem lemma_even_n : ∀ n : ℕ, Even n → Even (n * (n + 1)) := \nbegin\n  intros n h,\n  rw [even_iff_two_dvd, mul_add],\n  exact two_dvd_mul_of_two_dvd_left h _,\nend\n\n-- Lemma 2: If n is odd, then n + 1 is even.\ntheorem lemma_odd_n_plus_1 : ∀ n : ℕ, Odd n → Even (n + 1) := \nbegin\n  intros n h,\n  rw [odd_iff_not_even, not_not],\n  exact even_of_two_dvd_add_left _ h,\nend\n\n-- Lemma 3: If n is odd, then n * (n + 1) is even.\ntheorem lemma_odd_n : ∀ n : ℕ, Odd n → Even (n * (n + 1)) := \nbegin\n  intros n h,\n  rw [odd_iff_not_even, not_not],\n  exact two_dvd_mul_of_two_dvd_right _ (lemma_odd_n_plus_1 n h),\nend\n\n-- Reduction theorem: Prove the target statement using the lemmas.\ntheorem reduction : \n  (∀ n : ℕ, Even n → Even (n * (n + 1))) →\n  (∀ n : ℕ, Odd n → Even (n + 1)) →\n  (∀ n : ℕ, Odd n → Even (n * (n + 1))) →\n  ∀ n : ℕ, Even (n * (n + 1)) :=\nbegin\n  intros h_even_n h_odd_n_plus_1 h_odd_n,\n  cases nat.even_or_odd n with hn hn',\n  { exact h_even_n n hn },\n  { exact h_odd_n n hn' }\nend\n```\n\n```json\n{\"subgoal_ids\": [\"lemma_even_n\", \"lemma_odd_n_plus_1\", \"lemma_odd_n\"], \"root_name\": \"reduction\"}\n```"
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: If n is even, then n(n+1) is even.\ntheorem n_even_implies_product_even : ∀ n : ℕ, Even n → Even (n * (n + 1)) := by\n  intro h_even_n\n  -- Since n is even, n = 2k for some k.\n  -- n * (n + 1) = 2k * (n + 1). This is clearly divisible by 2.\n  have h_product : n * (n + 1) = (n + 1) * n := by simp\n  -- We use the definition of evenness: Even m means ∃ k, m = 2k.\n  -- Since n is even, n = 2 * (n / 2).\n  -- n * (n + 1) = 2 * (n / 2) * (n + 1).\n  -- Let k = (n / 2) * (n + 1). Then n * (n + 1) = 2 * k.\n  apply by assumption\n  exact fun _ => by\n    -- We use the fact that n is even, so n = 2 * (n / 2).\n    let k := n / 2 * (n + 1)\n    exact ⟨by rw [← k * 2], rfl⟩\n\n-- Lemma 2: If n+1 is even, then n(n+1) is even.\ntheorem n_plus_one_even_implies_product_even : ∀ n : ℕ, Even (n + 1) → Even (n * (n + 1)) := by\n  intro h_even_n_plus_1\n  -- Since n+1 is even, n+1 = 2k for some k.\n  -- n * (n + 1) = n * 2k. This is clearly divisible by 2.\n  -- n * (n + 1) = n * 2 * ((n + 1) / 2).\n  -- Let k = n * ((n + 1) / 2). Then n * (n + 1) = 2 * k.\n  apply by assumption\n  exact fun _ => by\n    -- We use the fact that n+1 is even, so n+1 = 2 * ((n + 1) / 2).\n    let k := n * ((n + 1) / 2)\n    exact ⟨by rw [← k * 2], rfl⟩\n\n-- Reduction Theorem\ntheorem reduction : (∀ n, Even n → Even (n * (n + 1))) → (∀ n, Even (n + 1) → Even (n * (n + 1))) → (∀ n, Even (n * (n + 1))) :=\nby\n  -- We need to prove that for any n, n(n+1) is even.\n  intro h_l1\n  intro h_l2\n  -- We use the fact that for any n, either n is even or n+1 is even.\n  -- This is equivalent to proving the disjunction (Even n) ∨ (Even (n+1))\n  -- and then using cases.\n  intro n\n  -- We use the standard property that for any n, n and n+1 are consecutive,\n  -- so one must be even.\n  cases (Even n) (Even (n + 1))\n  · -- Case 1: n is even.\n    -- We apply the hypothesis h_l1 (which states that if n is even, n(n+1) is even).\n    apply h_l1 n\n  · -- Case 2: n+1 is even.\n    -- We apply the hypothesis h_l2 (which states that if n+1 is even, n(n+1) is even).\n    apply h_l2 n\n```\n\n```json\n{\"subgoal_ids\": [\"n_even_implies_product_even\", \"n_plus_one_even_implies_product_even\"], \"root_name\": \"reduction\"}\n```"
+    }
+  ]
+}

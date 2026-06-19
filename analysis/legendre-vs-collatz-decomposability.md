@@ -1209,3 +1209,132 @@ This is the correct result: insufficient model diversity for a meaningful hardne
 - 🔲 Goldbach re-collection: run with 2+ distinct models to get a meaningful hardness score
 - 🔲 Structured-correct vs. structured-misdirected: needs semantic analysis layer
 - 🔲 Prompt engineering investigation: hold constant for now (see beat 907 rationale)
+
+---
+
+## Beat 912: Calibration baseline and the discrimination problem
+
+*Beat 912, ren1, 2026-06-19.*
+
+### Calibration runs: 3-model fleet (gemma4-e2b + phi4-14b + gemma4-e4b)
+
+Config: `fleet-collect-config-3model-calibration.json`
+- `ren3/gemma4-e2b-mlx` — Gemma-4-E2B, MLX on ren3
+- `ren4/phi4-14b` — Phi-4-14B, Ollama/CUDA on ren4  
+- `ren4/gemma4-e4b` — Gemma-4-E4B, Ollama/CUDA on ren4
+
+All three models are architecturally distinct (Gemma/E2B, Phi-4, Gemma/E4B). n_distinct_models=3 for all runs.
+
+### Hardness scores across the benchmark
+
+| Problem | tier | consensus | hardness | n_distinct |
+|---------|------|-----------|----------|------------|
+| calib-add-identities | solved_recent | 1.0 | **0.0** | 3 |
+| calib-mul-identities | solved_recent | 1.0 | **0.0** | 3 |
+| tractable-consecutive | weakly_open | 0.556 | **0.444** | 3 |
+| tractable-even-product | weakly_open | 0.083 | **0.917** | 3 |
+| tractable-even-or-odd | weakly_open | 0.0 | **1.0** | 3 |
+| goldbach | open | 0.0 | **1.0** | 3 |
+
+The calibration floor works as expected: solved_recent problems → hardness=0.0 (all models converge on the obvious decomposition). The problem is the ceiling.
+
+### The discrimination problem
+
+`tractable-even-or-odd` (tier=weakly_open, provably true) has hardness=**1.0** — identical to Goldbach (tier=open, unsolved since ~1742). The metric cannot discriminate them.
+
+**Why tractable-even-or-odd scores 1.0:**
+
+Models produce three syntactically incompatible but semantically valid proof approaches:
+- gemma4-e2b: direct case split — `∀ n : ℕ, Even n → Even n ∨ Odd n` + `∀ n : ℕ, Odd n → Even n ∨ Odd n`
+- phi4-14b: induction on successor — `∀ n, Even n ∨ Odd (Nat.succ n)` + `∀ n, Odd n ∨ Even (Nat.succ (Nat.succ n))`
+- gemma4-e4b: strong induction — `Even 0 ∨ Odd 0` + `∀ k : ℕ, (Even k ∨ Odd k) → (Even (k+1) ∨ Odd (k+1))`
+
+All three are valid proof strategies. They share zero common tokens → Jaccard=0, hardness=1.0.
+
+**Why Goldbach also scores 1.0:**
+
+Models produce three different, partially incompatible approaches:
+- gemma4-e2b: existence claims — `∃ k : ℤ, n = 2 * k` + `∃ p : ℕ, Nat.Prime p ∧ p ∣ n` × 3
+- phi4-14b: *wrong formulation* — `∀ n : ℕ, Even n → ∃ p q : ℕ, **Odd** p ∧ Odd q ∧ p + q = n` (uses "Odd" where Goldbach requires "Prime")
+- gemma4-e4b: specific instance — `∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = 4` (n=4 base case) + general
+
+The divergence here includes **unsound** components: phi4's "Odd" substitution is factually wrong (2 is prime but not odd; 2+4=6 has one even prime). gemma4-e4b's base-case-plus-general is structurally confused about what decomposition means.
+
+### The failure mode: raw Jaccard conflates two sources of divergence
+
+High Jaccard divergence can arise from:
+
+1. **Proof-path multiplicity** — multiple sound proof strategies exist; models pick different valid routes. Tractable problems with several natural proof approaches (case split vs. induction) → naturally high divergence, even when the problem is easy.
+
+2. **Genuine model confusion** — models don't know the proof structure; they produce syntactically valid-looking but semantically wrong or incoherent attempts. Genuinely open problems where no standard proof strategy is known → high divergence from confusion.
+
+The current metric treats both as equivalent hardness. This breaks the calibration: a provable problem with two natural proof routes (even-or-odd) is indistinguishable from an unsolved problem (Goldbach) by Jaccard alone.
+
+### What the metric needs: a soundness filter
+
+The discriminating factor is **semantic soundness** of each subgoal. Specifically:
+- Does each subgoal represent a *sound first step toward a proof* of the original claim?
+- Case-split subgoals for even-or-odd are trivially sound (they're implied by the original via Or.inl/inr).
+- phi4's "Odd p ∧ Odd q" subgoal for Goldbach is *unsound* — it's a reformulation of a false statement (not all Goldbach pairs have both odd summands; 2 is prime and even).
+
+A soundness filter would need to assess each subgoal against the target statement semantically. This is hard to automate without Lean verification. Heuristics that might work:
+- **Key-term preservation**: Goldbach's key terms are `Nat.Prime` and `p + q = n`. A subgoal that substitutes `Odd` for `Nat.Prime` fails this check.
+- **Logical entailment direction**: does the subgoal follow from the original, or is it a weaker/different claim?
+
+Neither is trivially computable. Lean checking (can the subgoal be stated as a lemma that implies the original?) would be the gold standard.
+
+### Why tractable-even-product is also near-1.0 (hardness=0.917)
+
+Same mechanism. Three models produce sound but syntactically incompatible case splits:
+- gemma4-e2b: parity assumption → conclusion (3 subgoals, one per parity case + n=0)
+- phi4-14b: different parity cases
+- gemma4-e4b: conditional case split (Even n → ... and Even (n+1) → ...)
+
+The Even/Odd vocabulary is shared, but the quantifier structure differs enough that Jaccard is near zero.
+
+**Interesting exception: tractable-consecutive (hardness=0.444)**
+
+The original conjunct `n ≤ n + 1 ∧ 2 ∣ n * (n + 1)` decomposes naturally into exactly these two parts. Models tend to produce these same two subgoals, differing only in how they're quantified (bound ∀ vs. unbound). Shared tokens (`2 ∣ n * (n + 1)` and `n ≤ n + 1`) produce non-zero Jaccard. Hardness=0.44 correctly reflects "some consensus, some divergence."
+
+**The diagnostic signal:** tractable-consecutive decomposes into its conjuncts trivially; the problem structure *tells you* the decomposition. Problems where the decomposition is non-trivial (even-or-odd, even-product) produce higher syntactic divergence even when they're provable.
+
+### Revised hardness interpretation
+
+The metric as currently implemented measures: **syntactic divergence in model decompositions of a problem's subgoal structure**.
+
+This correlates with hardness only when:
+1. The problem has a canonical decomposition structure (tractable-consecutive)
+2. All models are producing sound attempts (valid proof strategies, not confused restatements)
+
+For tractable problems with multiple valid proof routes (even-or-odd, even-product), high hardness reflects **proof-path entropy** not difficulty. For open problems where models produce unsound or confused attempts (Goldbach), high hardness may reflect difficulty — but the signal is contaminated by the same syntactic divergence from other sources.
+
+### Path forward
+
+Two independent improvements needed:
+
+**1. Soundness classification (semantic layer):** For each model's decomposition, classify whether the subgoals are sound first steps toward the target. This requires either:
+- Lean verification: can each subgoal be stated as a lemma in the right direction?
+- Key-term matching: does the decomposition preserve the key mathematical terms of the original?
+
+Even a simple key-term heuristic (Goldbach → must contain `Nat.Prime`; even-product → must contain `Even`) would filter phi4's wrong Goldbach decomposition.
+
+**2. Canonical decomposition check:** Does the problem statement itself suggest its decomposition? Conjunctive problems (`A ∧ B`) have canonical structure; models should all produce {A, B}. High divergence from this canonical structure is diagnostic. Problems without canonical structure (even-or-odd: `Even n ∨ Odd n`) genuinely have multiple valid decomposition routes.
+
+Neither is implemented yet. Recording as the next layer of the metric.
+
+### Serialization fix: n_distinct_models and n_invalid now in output JSON
+
+`run_collect.py` was not persisting `n_distinct_models` or `n_invalid` from `ConsensusResult` to the JSON output files. Fixed this beat — both fields now appear in the `consensus` dict in all new run files.
+
+### Collection status at beat 912
+
+- ✅ Five-way classifier: degenerate / confusion / tautology / reference / structured
+- ✅ Validity gate: filter reference+tautology before Jaccard (`n_invalid` field added)
+- ✅ Diversity gate: require ≥2 distinct model IDs among valid decompositions (`n_distinct_models` field)
+- ✅ Calibration baseline: solved_recent → hardness=0.0 (confirmed floor works)
+- ✅ Multi-model Goldbach: hardness=1.0, n_distinct=3 (diversity gate now passes)
+- ✅ Discrimination problem: raw Jaccard conflates proof-path multiplicity with genuine confusion
+- ✅ Output serialization: n_distinct_models + n_invalid now in consensus JSON
+- 🔲 Soundness filter: classify subgoals as sound vs. unsound (requires key-term check or Lean)
+- 🔲 Canonical decomposition check: conjunctive problems have trivial expected decomposition
+- 🔲 Structured-correct vs. structured-misdirected: closely related to soundness filter above

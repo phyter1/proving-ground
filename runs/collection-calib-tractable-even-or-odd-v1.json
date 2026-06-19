@@ -1,0 +1,71 @@
+{
+  "problem_id": "tractable-even-or-odd",
+  "target_statement": "∀ n : ℕ, Even n ∨ Odd n",
+  "n_models": 3,
+  "n_degenerate": 0,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": 0.0,
+    "hardness_score": 1.0,
+    "n_invalid": 0,
+    "n_distinct_models": 3,
+    "novel_statements": [
+      "∀ n, Even n ∨ Odd (Nat.succ n)",
+      "∀ k : ℕ, (Even k ∨ Odd k) → (Even (k+1) ∨ Odd (k+1))",
+      "∀ n : ℕ, Odd n → Even n ∨ Odd n",
+      "Even 0 ∨ Odd 0",
+      "∀ n : ℕ, Even n → Even n ∨ Odd n",
+      "∀ n, Odd n ∨ Even (Nat.succ (Nat.succ n))"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∀ n : ℕ, Even n → Even n ∨ Odd n",
+        "∀ n : ℕ, Odd n → Even n ∨ Odd n"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∀ n, Even n ∨ Odd (Nat.succ n)",
+        "∀ n, Odd n ∨ Even (Nat.succ (Nat.succ n))"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "Even 0 ∨ Odd 0",
+        "∀ k : ℕ, (Even k ∨ Odd k) → (Even (k+1) ∨ Odd (k+1))"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    }
+  ],
+  "errors": [],
+  "raw_responses": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "truncated": true,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: Even implies (Even or Odd)\ntheorem even_implies_disj : ∀ n : ℕ, Even n → Even n ∨ Odd n := by\n  intro n h\n  -- This is the definition of the property of divisibility by 2.\n  -- We use the fact that every natural number is either divisible by 2 (even) or not (odd).\n  -- The standard way to prove this is by considering the remainder when divided by 2.\n  -- Since we are in Mathlib, we rely on the structure of ℕ.\n  -- The definition of Even is: ∃ k, n = 2 * k.\n  -- The definition of Odd is: ∃ k, n = 2 * k + 1.\n  -- We can use the division algorithm for 2.\n  cases n | h\n  -- This path is complex without assuming properties of division.\n  -- A simpler approach is to use the definition of parity directly.\n  -- Since we are proving a fundamental property, we rely on the structure of ℕ.\n  -- We can use the fact that for any n, n = 2q or n = 2q + 1.\n  -- This is usually proven by induction or by looking at the division algorithm.\n  -- For simplicity and to ensure a verifiable proof, we rely on the fact that\n  -- the definition of Even/Odd partitions ℕ.\n  sorry\n\n-- Lemma 2: Odd implies (Even or Odd)\ntheorem odd_implies_disj : ∀ n : ℕ, Odd n → Even n ∨ Odd n := by\n  intro n h\n  -- This is the same structure as the previous lemma, just for the other case.\n  sorry\n\n-- Reduction Theorem\ntheorem reduction : (Even n) → (Odd n) → Even n ∨ Odd n := by\n  intro n h1 h2\n  -- Since the statement is ∀ n, we can instantiate n.\n  -- We need to show that if n is Even AND Odd, then the conclusion holds.\n  -- This is only possible if the hypotheses are contradictory, or if the\n  -- structure of the proof allows us to conclude the result directly.\n  -- Since the hypotheses are independent assumptions on 'n', we must use\n  -- the fact that the statement is a tautology for any given n.\n  -- The structure of the reduction requires that the hypotheses imply the conclusion.\n  -- Since the target is a disjunction, we can try to prove one side.\n  -- If we assume Even n and Odd n, we are assuming a contradiction unless\n  -- the definitions overlap (which they don't for standard definitions).\n  \n  -- Since the goal is to prove (Even n ∨ Odd n), and we have assumed both Even n and Odd n,\n  -- the proof is trivial if we can show that the assumption implies the conclusion.\n  -- If we assume Even n, then Even n ∨ Odd n is true.\n  -- If we assume Odd n, then Even n ∨ Odd n is true.\n  \n  -- The structure of the reduction requires that the hypotheses are used to derive the conclusion.\n  -- Since the target is a disjunction, we can pick one of the hypotheses.\n  \n  -- We use the fact that (P → Q) → (P → Q) is a valid proof structure,\n  -- but here we have (P ∧ Q) → (P ∨ Q).\n  \n  -- We can use the fact that (P ∧ Q) implies P, which implies P ∨ Q.\n  apply h1\n  -- This relies on the fact that (Even n) implies (Even n ∨ Odd n), which is Lemma 1.\n  -- We need to ensure the structure matches the required hypothesis flow.\n  \n  -- Since the structure requires two hy"
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\n-- Definitions for Even and Odd\ninductive Even : ℕ → Prop\n| zero : Even 0\n| succ_succ (n : ℕ) (h : Even n) : Even (Nat.succ (Nat.succ n))\n\ndef Odd : ℕ → Prop\n| n := ¬Even n\n\ntheorem even_zero_or_odd_succ : ∀ n, Even n ∨ Odd (Nat.succ n) :=\nbegin\n  intros n,\n  induction n with d ih,\n  { left, exact Even.zero },\n  { cases ih with h_even h_odd,\n    { right, intro e, apply h_odd, apply Even.succ_succ, assumption },\n    { left, apply Even.succ_succ, assumption } }\nend\n\ntheorem odd_zero_or_even_succ : ∀ n, Odd n ∨ Even (Nat.succ (Nat.succ n)) :=\nbegin\n  intros n,\n  induction n with d ih,\n  { right, exact Even.succ_succ d Even.zero },\n  { cases ih with h_odd h_even,\n    { left, intro e, apply h_odd, apply Even.succ_succ, assumption },\n    { right, apply Even.succ_succ, assumption } }\nend\n\ntheorem reduction : \n  (∀ n, Even n ∨ Odd (Nat.succ n)) →\n  (∀ n, Odd n ∨ Even (Nat.succ (Nat.succ n))) →\n  ∀ n : ℕ, Even n ∨ Odd n :=\nbegin\n  intros h1 h2 n,\n  induction n with d ih,\n  { left, exact Even.zero },\n  { cases ih with e_odd e_even,\n    { right, assumption },\n    { left, apply Even.succ_succ, assumption } }\nend\n```\n\n```json\n{\"subgoal_ids\": [\"even_zero_or_odd_succ\", \"odd_zero_or_even_succ\"], \"root_name\": \"reduction\"}\n```\n\n### Explanation\n\n1. **Definitions**: We define `Even` and `Odd` using inductive types. `Even n` is defined by two constructors: `zero` for 0, and `succ_succ` for any even number plus two. `Odd n` is defined as the negation of `Even n`.\n\n2. **Lemma 1 (`even_zero_or_odd_succ`)**: This lemma states that for any natural number `n`, either `n` is even or `n+1` is odd. We prove this by induction on `n`. The base case `n = 0` is straightforward since 0 is even. For the inductive step, we consider whether `n` is even or odd and derive the result for `n+1`.\n\n3. **Lemma 2 (`odd_zero_or_even_succ`)**: This lemma states that for any natural number `n`, either `n` is odd or `n+2` is even. We prove this by induction on `n`. The base case `n = 0` shows that 2 is even. For the inductive step, we consider whether `n` is odd or even and derive the result for `n+2`.\n\n4. **Reduction**: Using the two lemmas as hypotheses, we prove the main theorem by induction on `n`. The base case `n = 0` shows that 0 is even. For the inductive step, we use the hypothesis to show that if `n` is either even or odd, then so is `n+1`.\n\nThis approach ensures that every natural number is classified as either even or odd, completing the proof of the target statement."
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "truncated": true,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: Base case for induction (n=0)\ntheorem even_or_odd_of_zero : Even 0 ∨ Odd 0 := by\n  -- 0 is even since 0 = 2 * 0\n  exact ⟨by assumption, by assumption⟩\n\n-- Lemma 2: Inductive step for induction (k -> k+1)\ntheorem even_or_odd_of_succ : ∀ k : ℕ, (Even k ∨ Odd k) → (Even (k+1) ∨ Odd (k+1)) := by\n  intro k h\n  -- We need to show Even (k+1) ∨ Odd (k+1)\n  cases h with ⟨h_even, h_odd⟩\n  -- Case 1: k is even\n  · -- k = 2m. Then k+1 = 2m + 1. This is odd.\n    have h_k_even : Even k := h_even\n    let m := (k / 2).one -- Since k is even, k/2 is defined and k = 2 * (k/2)\n    -- We use the definition of Odd: n = 2j + 1\n    -- k+1 = 2 * (k/2) + 1\n    have h_k_plus_1_odd : Odd (k + 1) := by\n      apply Odd.intro (by assumption) (by assumption)\n      -- We need to show k+1 = 2 * (k/2) + 1.\n      -- Since k is even, k = 2 * (k/2).\n      -- k+1 = 2 * (k/2) + 1.\n      -- This requires careful use of the definition of addition and multiplication.\n      -- Since k is even, k = 2 * (k/2).\n      -- k+1 = 2 * (k/2) + 1.\n      -- We use the fact that `k + 1` is the successor of `k`.\n      -- If k = 2m, then k+1 = 2m+1.\n      -- We use the definition of `Odd` which requires finding `j` such that `n = 2j + 1`.\n      -- Let j = k/2. Then 2j + 1 = k + 1.\n      exact ⟨(k / 2).one, by rw [← Nat.add_comm]⟩\n\n  -- Case 2: k is odd\n  · -- k = 2m + 1. Then k+1 = 2m + 2 = 2(m+1). This is even.\n    have h_k_odd : Odd k := h_odd\n    -- k+1 = 2 * ((k+1)/2)\n    -- Since k is odd, k+1 is even.\n    have h_k_plus_1_even : Even (k + 1) := by\n      -- k+1 = 2 * ((k+1)/2)\n      -- We need to show (k+1)/2 is an integer. Since k is odd, k+1 is even, so this is fine.\n      exact ⟨(k + 1) / 2, by rw [← Nat.mul_self]⟩\n\n-- Reduction theorem: Proving the target statement using induction\ntheorem reduction : (even_or_odd_of_zero) → (even_or_odd_of_succ) → ∀ n : ℕ, Even n ∨ Odd n :=\n  fun h_base h_step =>\n  -- This is the standard structure for an inductive proof of P(n)\n  fun n =>\n    if n = 0 then\n      -- Base case: n=0. Use h_base.\n      -- h_base : Even 0 ∨ Odd 0\n      match h_base with ⟨h_e, h_o⟩ =>\n        if h_e then\n          -- We found Even 0\n          exact ⟨h_e, by assumption⟩\n        else\n          -- We found Odd 0\n          exact ⟨by assumption, h_o⟩\n    else\n      -- Inductive step: n = k + 1. Assume P(k) and use h_step.\n      let k := n - 1\n      -- Inductive Hypothesis: P(k)\n      let h_k_prop : Even k ∨ Odd k :=\n        if k = 0 then\n          -- This case should not happen if n > 0, but for completeness, we rely on the structure.\n          -- Since n > 0, k >= 0. If k=0, n=1. P(0) is true by h_base.\n          -- We must use the hypothesis h_base here if k=0.\n          match h_base with ⟨h_e, h_o⟩ =>\n            if h_e then ⟨h_e, by assumption⟩\n            else ⟨by assumption, h_o⟩\n        else\n          -- For k > 0, we assume P(k) holds by induction hypothesis (which is implicit here).\n          -- Since we are writing the reduction proof, we mus"
+    }
+  ]
+}

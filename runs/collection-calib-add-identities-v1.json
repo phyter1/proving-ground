@@ -1,0 +1,69 @@
+{
+  "problem_id": "calib-add-identities",
+  "target_statement": "∀ n : ℕ, n + 0 = n ∧ 0 + n = n",
+  "n_models": 3,
+  "n_degenerate": 0,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": 1.0,
+    "hardness_score": 0.0,
+    "n_invalid": 0,
+    "n_distinct_models": 3,
+    "novel_statements": [
+      "∀ n : ℕ, 0 + n = n",
+      "∀ n : ℕ, n + 0 = n",
+      "0 + n = n",
+      "n + 0 = n"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "n_subgoals": 2,
+      "subgoals": [
+        "n + 0 = n",
+        "0 + n = n"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "n + 0 = n",
+        "0 + n = n"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∀ n : ℕ, n + 0 = n",
+        "∀ n : ℕ, 0 + n = n"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    }
+  ],
+  "errors": [],
+  "raw_responses": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\ntheorem add_zero_left : n + 0 = n := by\n  rfl\ntheorem add_zero_right : 0 + n = n := by\n  rfl\n\ntheorem add_identity : n + 0 = n ∧ 0 + n = n :=\n  h, h\n  where\n    h : n + 0 = n\n    h2 : 0 + n = n\n  -- This is a placeholder for the actual proof structure,\n  -- but since the target is a conjunction, we need to ensure both sides are proven.\n  -- Since we have separate proofs for the components, we combine them.\n  -- We rely on the fact that the structure of the target implies we need both.\n  -- For the purpose of the reduction, we will assume the structure allows us to combine the results.\n  -- Since the target is a conjunction, we need to prove both conjuncts.\n  -- We will use the structure provided by the individual lemmas.\n  -- For this specific structure, we need to ensure the proof combines the results correctly.\n  -- Since the structure of the target is `A ∧ B`, and we have proved `A` and `B` separately,\n  -- we can use `by exact h ∧ h2` if the context allows, or just rely on the structure of the reduction.\n  -- For now, we define the theorem to just assert the conjunction based on the individual proofs.\n  := by exact ⟨h, h2⟩\n\ntheorem reduction : (n + 0 = n) → (0 + n = n) → n + 0 = n ∧ 0 + n = n :=\n  by\n    intro h_left\n    intro h_right\n    simp [h_left, h_right]\n    -- We need to show the conjunction.\n    -- Since the individual proofs established the equality, we just reassert the structure.\n    -- This relies on the fact that if `n + 0 = n` is true, and `0 + n = n` is true,\n    -- then the conjunction is true.\n    exact ⟨h_left, h_right⟩\n```\n```json\n{\"subgoal_ids\": [\"add_zero_left\", \"add_zero_right\"], \"root_name\": \"reduction\"}\n```"
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: n + 0 = n for all natural numbers n\ntheorem add_zero (n : ℕ) : n + 0 = n :=\nbegin\n  induction n with d hd,\n  { -- Base case: when n is zero\n    refl, },\n  { -- Inductive step: assume the statement holds for d and prove it for s d\n    rw [nat.succ_add, hd],\n    refl }\nend\n\n-- Lemma 2: 0 + n = n for all natural numbers n\ntheorem zero_add (n : ℕ) : 0 + n = n :=\nbegin\n  induction n with d hd,\n  { -- Base case: when n is zero\n    refl, },\n  { -- Inductive step: assume the statement holds for d and prove it for s d\n    rw [nat.add_succ],\n    rw hd,\n    refl }\nend\n\n-- Reduction theorem that uses the above lemmas to conclude the target statement\ntheorem reduction (h1 : ∀ n : ℕ, n + 0 = n) (h2 : ∀ n : ℕ, 0 + n = n) :\n  ∀ n : ℕ, n + 0 = n ∧ 0 + n = n :=\nbegin\n  intro n,\n  split,\n  { apply h1 n },\n  { apply h2 n }\nend\n```\n\n```json\n{\"subgoal_ids\": [\"add_zero\", \"zero_add\"], \"root_name\": \"reduction\"}\n```\n\n### Explanation\n\n1. **Lemma `add_zero`:** This lemma proves that adding zero to any natural number \\( n \\) results in \\( n \\). The proof uses induction on \\( n \\):\n   - **Base case:** When \\( n = 0 \\), \\( 0 + 0 = 0 \\) holds trivially.\n   - **Inductive step:** Assume it holds for some \\( d \\), i.e., \\( d + 0 = d \\). We need to show that \\( (d+1) + 0 = d+1 \\). Using the definition of addition, this becomes \\( d + (0 + 1) = d + 1 \\), which simplifies to \\( d + 1 = d + 1 \\).\n\n2. **Lemma `zero_add`:** This lemma proves that adding any natural number \\( n \\) to zero results in \\( n \\). The proof also uses induction on \\( n \\):\n   - **Base case:** When \\( n = 0 \\), \\( 0 + 0 = 0 \\) holds trivially.\n   - **Inductive step:** Assume it holds for some \\( d \\), i.e., \\( 0 + d = d \\). We need to show that \\( 0 + (d+1) = d+1 \\). Using the definition of addition, this becomes \\( (0 + d) + 1 = d + 1 \\), which simplifies to \\( d + 1 = d + 1 \\).\n\n3. **Reduction Theorem:** This theorem uses the two lemmas as hypotheses to conclude the target statement for all natural numbers \\( n \\). It introduces a variable \\( n \\) and splits the proof into two parts, applying each lemma to prove both components of the conjunction.\n\nThis solution provides a complete verification of the target statement using induction and basic properties of addition in Lean."
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: n + 0 = n\ntheorem n_add_zero : ∀ n : ℕ, n + 0 = n := by\n  intro n\n  rfl\n\n-- Lemma 2: 0 + n = n\ntheorem zero_add_n : ∀ n : ℕ, 0 + n = n := by\n  intro n\n  -- We rely on the standard commutativity property of addition in Mathlib\n  exact Nat.add_comm 0 n\n\n-- Reduction theorem: Uses the statements of the lemmas to prove the target.\ntheorem reduction : (∀ n : ℕ, n + 0 = n) → (∀ n : ℕ, 0 + n = n) → ∀ n : ℕ, n + 0 = n ∧ 0 + n = n :=\nby\n  intro h1 h2\n  intro n\n  -- From h1, we get n + 0 = n\n  have h_left : n + 0 = n := h1 n\n  -- From h2, we get 0 + n = n\n  have h_right : 0 + n = n := h2 n\n  -- Conclude the conjunction\n  exact ⟨h_left, h_right⟩\n```\n\n```json\n{\"subgoal_ids\": [\"n_add_zero\", \"zero_add_n\"], \"root_name\": \"reduction\"}\n```"
+    }
+  ]
+}

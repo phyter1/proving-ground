@@ -1,0 +1,23 @@
+{
+  "models": [
+    {
+      "name": "ren3/gemma4-e2b-mlx",
+      "model": "mlx-community/gemma-4-e2b-it-4bit",
+      "base_url": "http://ren3.local:8080/v1",
+      "extra_body": {"max_tokens": 2048}
+    },
+    {
+      "name": "ren4/phi4-14b",
+      "model": "phi4:14b",
+      "base_url": "http://ren4.local:11434/v1",
+      "timeout": 120
+    },
+    {
+      "name": "ren4/gemma4-e4b",
+      "model": "gemma4:e4b",
+      "base_url": "http://ren4.local:11434/v1",
+      "timeout": 120
+    }
+  ],
+  "_note": "3-model Goldbach diversity test: gemma4-e2b (known to produce valid structured decompositions) + phi4-14b and gemma4-e4b as candidates for a second valid model. Tests whether diversity gate can pass for Goldbach."
+}

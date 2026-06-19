@@ -1,0 +1,72 @@
+{
+  "problem_id": "goldbach",
+  "target_statement": "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n",
+  "n_models": 3,
+  "n_degenerate": 0,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": 0.0,
+    "hardness_score": 1.0,
+    "novel_statements": [
+      "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Odd p ∧ Odd q ∧ p + q = n",
+      "∀ n : ℕ, Odd n → 1 < n → (Nat.Prime n ∨ ∃ p q : ℕ, 1 < p ∧ 1 < q ∧ p * q = n)",
+      "∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = 4",
+      "∃ k : ℤ, n = 2 * k",
+      "∃ p' q' : ℕ, Nat.Prime p' ∧ Nat.Prime q' ∧ p' + q' = n",
+      "∃ p : ℕ, Nat.Prime p ∧ p > 1 ∧ p ∣ n",
+      "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "n_subgoals": 4,
+      "subgoals": [
+        "∃ k : ℤ, n = 2 * k",
+        "∃ p : ℕ, Nat.Prime p ∧ p > 1 ∧ p ∣ n",
+        "∃ p : ℕ, Nat.Prime p ∧ p ∣ n",
+        "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Odd p ∧ Odd q ∧ p + q = n",
+        "∀ n : ℕ, Odd n → 1 < n → (Nat.Prime n ∨ ∃ p q : ℕ, 1 < p ∧ 1 < q ∧ p * q = n)"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = 4",
+        "∃ p' q' : ℕ, Nat.Prime p' ∧ Nat.Prime q' ∧ p' + q' = n"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    }
+  ],
+  "errors": [],
+  "raw_responses": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "truncated": true,
+      "text": "```lean\nimport Mathlib\n\n-- Helper definitions for primality, assuming Nat.Prime is available or defined elsewhere.\n-- We assume Nat.Prime is a concept that can be proven for natural numbers.\n-- For this context, we assume a standard definition where Nat.Prime p means p is prime.\n\n-- We need a way to define what 'Even n' means. We assume standard parity.\n\ntheorem is_even_of_n (n : ℕ) (h : Even n) : ∃ k : ℤ, n = 2 * k := by\n  -- This is a standard definition, but we need to ensure it's provable or defined.\n  -- Since the input is `Even n`, we assume this is the definition we rely on.\n  -- For simplicity in the proof structure, we rely on the standard definition of evenness.\n  -- If we assume `Even n` implies `n = 2 * k`, this theorem is trivial.\n  -- Let's assume the standard definition: `Even n` is equivalent to `∃ k, n = 2 * k`.\n  sorry\n\n-- Lemma 1: Existence of a prime factor (trivial, but necessary structure)\ntheorem exists_prime_factor (n : ℕ) (h : 2 < n) (h_even : Even n) : ∃ p : ℕ, Nat.Prime p ∧ p > 1 ∧ p ∣ n := by\n  -- This is a standard result from number theory (if n > 1, it has a prime factor).\n  -- We rely on the fact that if n is even and > 2, it must have a prime factor.\n  -- If n is even, n = 2 * m. If m > 1, it has a prime factor.\n  -- If n = 4, it has factor 2.\n  -- If n = 6, it has factors 2 and 3.\n  sorry\n\n-- Lemma 2: Existence of a prime factor for odd numbers (if we consider the general case)\n-- Since the target only requires the sum of two primes, we focus on the structure implied by Goldbach.\n-- We will try to prove a simpler statement related to the structure we need.\n\n-- Let's try to prove a statement about the existence of a prime factor for any integer > 1.\ntheorem prime_factor_exists (n : ℕ) (h : n > 1) : ∃ p : ℕ, Nat.Prime p ∧ p ∣ n := by\n  -- This is a standard result. If n > 1, it has a prime factor.\n  sorry\n\n-- Lemma 3: Existence of a prime factor for even numbers > 2\ntheorem prime_factor_for_even (n : ℕ) (h : Even n) (h_gt_2 : n > 2) : ∃ p : ℕ, Nat.Prime p ∧ p ∣ n := by\n  -- If n is even and n > 2, then n is divisible by 2.\n  -- Since 2 is prime, this holds.\n  sorry\n\n-- Reduction Theorem\ntheorem reduction :\n    (exists_prime_factor n 2 < n (is_even_of_n n)) →\n    (prime_factor_exists n (n > 1)) →\n    (prime_factor_for_even n (Even n) (n > 2)) →\n    ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n :=\n  by\n    -- This is the core of Goldbach's conjecture, which is unproven.\n    -- We must assume the existence of such a decomposition for the reduction to be complete,\n    -- as the prompt demands a COMPLETE proof for the reduction theorem, even if the underlying\n    -- conjecture is open. Since we cannot prove the conjecture, we must rely on an assumption\n    -- or a known result if we are to complete the proof.\n    -- Since we cannot prove the conjecture, we must leave the reduction proof as 'sorry' if we cannot prove it,\n    -- but the prompt demands a COMPLETE proof for the reduction.\n    -- We will use a placeholder"
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "truncated": true,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: Every even number greater than 2 can be expressed as a sum of two odd numbers.\ntheorem even_as_sum_of_odds : ∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Odd p ∧ Odd q ∧ p + q = n := \nbegin\n  intros n hn he,\n  have h1: n > 0, from lt.trans (lt.add_right _ _) hn,\n  cases nat.even_odd_of_nat n with hpq hpq,\n  { -- Case when n is even\n    rcases hpq with ⟨p, q, rfl⟩,\n    use p - 1, use q + 1,\n    split; try { linarith [h1] },\n    split; try { linarith [h1] },\n    rw nat.add_sub_cancel_of_le (le_add_one _),\n  },\n  { -- Case when n is odd\n    rcases hpq with ⟨p, q, rfl⟩,\n    use p + 1, use q - 1,\n    split; try { linarith [h1] },\n    split; try { linarith [h1] },\n    rw nat.sub_add_cancel_of_le (le_sub_one _),\n  }\nend\n\n-- Lemma 2: Every odd number greater than 1 is either prime or can be expressed as a product of two smaller natural numbers.\ntheorem odd_is_prime_or_composite : ∀ n : ℕ, Odd n → 1 < n → (Nat.Prime n ∨ ∃ p q : ℕ, 1 < p ∧ 1 < q ∧ p * q = n) := \nbegin\n  intros n hn hlt,\n  by_cases hp: Nat.Prime n,\n  { left, assumption },\n  { right,\n    have hnp: ¬Nat.Prime n, from mt nat.prime_iff_not_dvd_mul.mp hp,\n    rcases nat.exists_factor_pair_of_non_prime n with ⟨p, q, rfl, hp1, hq1, hprod⟩,\n    use p, use q,\n    split; assumption\n  }\nend\n\n-- Reduction theorem: Using the above lemmas to approach Goldbach's Conjecture.\ntheorem reduction : \n  (∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Odd p ∧ Odd q ∧ p + q = n) →\n  (∀ n : ℕ, Odd n → 1 < n → (Nat.Prime n ∨ ∃ p q : ℕ, 1 < p ∧ 1 < q ∧ p * q = n)) →\n  ∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n :=\nbegin\n  intros hsum hprime n hn he,\n  rcases hsum n hn he with ⟨p, q, hpodd, hqodd, heq⟩,\n  cases hprime p (hpodd.elim) (lt_of_lt_of_le (nat.pos_of_odd hpodd) (le_add_one _)) with hp1 hp2,\n  { use p, \n    rcases hprime q (hqodd.elim) (lt_of_lt_of_le (nat.pos_of_odd hqodd) (le_add_one _)) with hq1 hq2,\n    { use q, split; assumption },\n    { rcases hq2 with ⟨r, s, hr1, hs1, heqr⟩,\n      have hpr: Nat.Prime r ∨ Nat.Prime s := nat.prime_or_prime_of_mul_eq hpodd.elim hqodd.elim heqr,\n      cases hpr with hpr hps,\n      { use r, split; assumption },\n      { use s, split; assumption } }\n  },\n  { rcases hp2 with ⟨r, s, hr1, hs1, heqr⟩,\n    have hpr: Nat.Prime r ∨ Nat.Prime s := nat.prime_or_prime_of_mul_eq hpodd.elim (nat.even_iff_not_odd.mp (not_not.eta (λ hn, n = p + q ∧ p = r * s ∧ 2 < n ∧ Even n → False))) heqr,\n    cases hpr with hpr hps,\n    { use r, \n      rcases hprime q (hqodd.elim) (lt_of_lt_of_le (nat.pos_of_odd hqodd) (le_add_one _)) with hq1 hq2,\n      { use s, split; assumption },\n      { rcases hq2 with ⟨t, u, ht1, hu1, heqt⟩,\n        have hpt: Nat.Prime t ∨ Nat.Prime u := nat.prime_or_prime_of_mul_eq (nat.even_iff_not_odd.mp (not_not.eta (λ hn, n = p + q ∧ p = r * s ∧ 2 < n ∧ Even n → False))) hqodd.elim heqt,\n        cases hpt with hpt hpu,\n        { use t, split; assumption },\n        { use u, split; assumption } }\n    },\n    { use s, \n      rcases"
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: Base Case (n=4)\n-- Proves that 4 is the sum of two primes (2 + 2).\ntheorem lemma_base_case : ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = 4 := by\n  constructor\n  . exact 2\n  . exact 2\n  . exact rfl\n\n-- Lemma 2: Inductive Step (The core assumption)\n-- If n-2 is the sum of two primes, then n is also the sum of two primes.\n-- This lemma encapsulates the difficulty of the conjecture.\ntheorem lemma_inductive_step (n : ℕ) (h_n_minus_2 : ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n - 2) : ∃ p' q' : ℕ, Nat.Prime p' ∧ Nat.Prime q' ∧ p' + q' = n := by sorry\n\n-- Reduction Theorem\n-- Uses the base case (n=4) and the inductive step (n-2 -> n) to prove the target statement.\ntheorem reduction (H_base : ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = 4) (H_step : ∀ n : ℕ, (n > 4 → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n - 2) → ∃ p' q' : ℕ, Nat.Prime p' ∧ Nat.Prime q' ∧ p' + q' = n) :\n    ∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n :=\nby\n  -- We prove the target statement by induction on k, where n = 2k + 2.\n  -- The target is equivalent to proving P(n) for all even n >= 4.\n  -- We use the structure of the target statement and induction on n/2.\n\n  let h_target (n : ℕ) (h_n : 2 < n → Even n) : ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n :=\n    fun n h_n =>\n      -- We only care about n such that 2 < n and Even n.\n      if 2 < n && Even n then\n        if n = 4 then\n          -- Base Case: n=4. Use H_base.\n          let ⟨p, q, h_p_q⟩ := H_base in\n          exact ⟨p, q, h_p_q⟩\n        else\n          -- Inductive Step: n > 4.\n          -- We need to show P(n) assuming P(n-2).\n          -- The premise for the inductive step is:\n          -- (n > 4 → Even n → P(n-2))\n          -- We use the hypothesis H_step, which takes care of this implication.\n          let h_n_minus_2_exists := H_step n (by assumption) in\n          -- h_n_minus_2_exists is the proof that P(n-2) holds, given the premises.\n          -- We use this to conclude P(n).\n          let ⟨p', q', h_p'_q'⟩ := h_n_minus_2_exists in\n          exact ⟨p', q', h_p'_q'⟩\n      else\n        -- If the premises (2 < n and Even n) are false, the implication holds vacuously.\n        by assumption\n\n  -- The final result is the statement itself, which we have constructed above.\n  exact h_target\n\n```\n\n```json\n{\"subgoal_ids\": [\"lemma_base_case\", \"lemma_inductive_step\"], \"root_name\": \"reduction\"}\n```"
+    }
+  ]
+}

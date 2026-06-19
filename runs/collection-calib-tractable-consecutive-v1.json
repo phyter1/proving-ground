@@ -1,0 +1,70 @@
+{
+  "problem_id": "tractable-consecutive",
+  "target_statement": "∀ n : ℕ, n ≤ n + 1 ∧ 2 ∣ n * (n + 1)",
+  "n_models": 3,
+  "n_degenerate": 0,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": 0.5555555555555555,
+    "hardness_score": 0.44444444444444453,
+    "n_invalid": 0,
+    "n_distinct_models": 3,
+    "novel_statements": [
+      "2 ∣ n * (n + 1)",
+      "∀ n : ℕ, n ≤ n + 1",
+      "n ≤ n + 1",
+      "∀ n : ℕ, n ≤ n + 1 → 2 ∣ n * (n + 1)",
+      "∀ n : ℕ, 2 ∣ n * (n + 1)"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∀ n : ℕ, n ≤ n + 1 → 2 ∣ n * (n + 1)",
+        "∀ n : ℕ, n ≤ n + 1"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∀ n : ℕ, n ≤ n + 1",
+        "∀ n : ℕ, 2 ∣ n * (n + 1)"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "n ≤ n + 1",
+        "2 ∣ n * (n + 1)"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    }
+  ],
+  "errors": [],
+  "raw_responses": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: Divisibility of consecutive integers\ntheorem consecutive_divisibility : ∀ n : ℕ, n ≤ n + 1 → 2 ∣ n * (n + 1) :=\n  by\n    intro n h\n    -- We use the property that the product of two consecutive integers is always even.\n    -- This is a standard result, but we prove it directly for completeness.\n    -- Case 1: n is even. Then n = 2k. n(n+1) = 2k(2k+1), which is divisible by 2.\n    -- Case 2: n is odd. Then n+1 is even. Let n+1 = 2k. n(n+1) = (2k-1) * 2k, which is divisible by 2.\n    -- Since we are in Mathlib, we can use the fact that for any integer n, either n or n+1 is even.\n    -- Since we are in ℕ, we can use parity.\n    -- The statement is equivalent to: n * (n + 1) is even.\n    -- This is equivalent to: (n * (n + 1)) % 2 = 0.\n    -- Since we are in ℕ, we can use the property that for any integer x, x(x+1) is even.\n    -- We prove this by considering parity.\n    -- If n is even, n = 2k, then n(n+1) is even.\n    -- If n is odd, n+1 is even, so n(n+1) is even.\n    -- This is always true for integers. Since we are in ℕ, this holds.\n    -- We rely on the fact that for any integer x, x(x+1) is even.\n    -- Since 2 | x(x+1) is equivalent to x(x+1) % 2 = 0, and this is always true for integers,\n    -- it holds for natural numbers.\n    sorry\n\n-- Lemma 2: The condition n ≤ n + 1 is always true for natural numbers.\ntheorem inequality_holds : ∀ n : ℕ, n ≤ n + 1 :=\n  by\n    -- This is true by definition of successor in ℕ.\n    -- n ≤ n + 1 is equivalent to 0 ≤ 1, which is true.\n    sorry\n\n-- Reduction Theorem\ntheorem reduction : consecutive_divisibility → inequality_holds → ∀ n : ℕ, n ≤ n + 1 ∧ 2 ∣ n * (n + 1) :=\n  by\n    intro n h\n    have h_ine : n ≤ n + 1 := by exact inequality_holds n\n    have h_div : 2 ∣ n * (n + 1) := by exact consecutive_divisibility n h_ine\n    exact ⟨h_ine, h_div⟩\n```\n```json\n{\"subgoal_ids\": [\"consecutive_divisibility\", \"inequality_holds\"], \"root_name\": \"reduction\"}\n```"
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: For any natural number n, n ≤ n + 1\ntheorem le_consecutive : ∀ n : ℕ, n ≤ n + 1 :=\nbegin\n  intros n,\n  apply nat.le_add_right,\nend\n\n-- Lemma 2: For any natural number n, 2 divides n * (n + 1)\ntheorem even_product_consecutive : ∀ n : ℕ, 2 ∣ n * (n + 1) :=\nbegin\n  intros n,\n  cases n with d hd,\n  { -- Case when n = 0\n    simp [nat.mul_zero],\n    exact nat.zero_divisors _,\n  },\n  { -- Case when n = succ d\n    have h : even (d * (succ d + 1)),\n    { rw ←nat.succ_mul_succ d,\n      apply nat.even_mul_of_even_right,\n      apply nat.even_succ_self, },\n    exact h,\n  }\nend\n\n-- Reduction theorem using the lemmas to prove the target statement\ntheorem reduction : (∀ n : ℕ, n ≤ n + 1) → (∀ n : ℕ, 2 ∣ n * (n + 1)) → ∀ n : ℕ, n ≤ n + 1 ∧ 2 ∣ n * (n + 1) :=\nbegin\n  intros h_le_consecutive h_even_product_consecutive n,\n  split,\n  { apply h_le_consecutive n },\n  { apply h_even_product_consecutive n }\nend\n```\n\n```json\n{\"subgoal_ids\": [\"le_consecutive\", \"even_product_consecutive\"], \"root_name\": \"reduction\"}\n```\n\n### Explanation\n\n1. **Lemma `le_consecutive`:** This lemma states that for any natural number \\( n \\), it holds that \\( n \\leq n + 1 \\). The proof uses the fact that adding a positive integer (in this case, 1) to another integer results in a greater or equal value.\n\n2. **Lemma `even_product_consecutive`:** This lemma asserts that for any natural number \\( n \\), the product \\( n \\times (n + 1) \\) is even. The proof uses induction on \\( n \\):\n   - Base case: When \\( n = 0 \\), \\( 0 \\times 1 = 0 \\), which is trivially even.\n   - Inductive step: Assume it holds for some \\( d \\). For \\( n = \\text{succ } d \\) (i.e., \\( n = d + 1 \\)), the product becomes \\( (d + 1) \\times (d + 2) \\), which can be rewritten as \\( d \\times (d + 2) + (d + 2) \\). Since \\( d + 2 \\) is even, the entire expression is even.\n\n3. **Reduction Theorem:** This theorem combines the two lemmas to prove the target statement: for any natural number \\( n \\), both \\( n \\leq n + 1 \\) and \\( 2 \\mid n \\times (n + 1) \\). It uses the hypotheses from the lemmas directly, applying them to conclude the conjunction of the two properties."
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "truncated": true,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: Trivial Inequality\ntheorem lemma_inequality (n : ℕ) : n ≤ n + 1 := by\n  -- This is a standard property of natural numbers: n <= n + 1\n  exact Nat.le_succ n\n\n-- Lemma 2: Divisibility of consecutive product\ntheorem lemma_divisibility (n : ℕ) : 2 ∣ n * (n + 1) := by\n  -- We use induction on n, but cases on parity is cleaner.\n  -- We use the definition of divisibility: 2 | m means m = 2 * k for some k.\n  cases n with |\n    | zero =>\n      -- n = 0. n * (n + 1) = 0 * 1 = 0. 2 | 0 since 0 = 2 * 0.\n      rfl\n    | hk =>\n      -- n = hk + 1. We use induction on hk.\n      induction hk with\n      | zero =>\n          -- Base case: n = 1. n * (n + 1) = 1 * 2 = 2. 2 | 2.\n          rfl\n      | hk' ih =>\n          -- Inductive step: Assume 2 | hk' * (hk' + 1). Prove 2 | (hk' + 1) * (hk' + 2).\n          -- Let m = hk' + 1. We need to show 2 | m * (m + 1).\n          -- This is exactly the statement for n = m.\n          -- Since the property holds for all n, we can rely on the structure.\n          -- We prove it directly by considering parity of n = hk' + 1.\n          let n' := hk' + 1\n          -- We need to show 2 | n' * (n' + 1)\n          cases n' with |\n            | zero =>\n                -- This case is impossible since hk' >= 0, so n' >= 1.\n                sorry\n            | hk'' =>\n                -- n' = hk'' + 1.\n                -- Case 1: n' is even.\n                if hk'' + 1 = 2 * (hk'' + 1) / 2 then\n                  -- n' is even. n' = 2k. n' * (n' + 1) = 2k * (2k + 1). Divisible by 2.\n                  -- We use the fact that 2 | 2k.\n                  have : 2 ∣ n' := by\n                    apply div_left\n                    exact (mul_comm (by rw [add_comm (by exact (Nat.le_succ hk' + 1))]))\n                    exact (by rw [add_comm (by exact (Nat.le_succ hk' + 1))])\n                  -- This path is getting complicated due to the structure of the induction.\n                  -- Let's use the standard parity case analysis directly on n.\n                  sorry\n\n-- Re-implementing lemma_divisibility using standard parity cases for clarity and correctness.\ntheorem lemma_divisibility' (n : ℕ) : 2 ∣ n * (n + 1) := by\n  -- Case 1: n is even.\n  cases n with |\n    | zero =>\n      -- n = 0. 0 * 1 = 0. 2 | 0.\n      rfl\n    | hk =>\n      -- n = hk. We check parity of hk.\n      cases hk with |\n        | zero =>\n            -- n = 0, handled above.\n            sorry\n        | hk' =>\n            -- n = hk' + 1.\n            -- We check parity of n.\n            cases hk' with |\n              | zero =>\n                  -- n = 1 (odd). n+1 = 2 (even).\n                  -- n * (n+1) = 1 * 2 = 2. 2 | 2.\n                  rfl\n              | hk'' =>\n                  -- n = hk'' + 1.\n                  -- Check parity of n.\n                  if hk'' + 1 = 2 * (hk'' + 1) / 2 then\n                    -- n is even. n = 2k.\n                    -- n * (n+1) = 2k * (2k+1). Divisible by 2.\n                    have : 2 ∣ n := by\n      "
+    }
+  ]
+}

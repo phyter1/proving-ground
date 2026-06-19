@@ -1,0 +1,69 @@
+{
+  "problem_id": "calib-mul-identities",
+  "target_statement": "∀ n : ℕ, n * 1 = n ∧ 1 * n = n",
+  "n_models": 3,
+  "n_degenerate": 0,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": 1.0,
+    "hardness_score": 0.0,
+    "n_invalid": 0,
+    "n_distinct_models": 3,
+    "novel_statements": [
+      "n * 1 = n",
+      "1 * n = n",
+      "∀ n : ℕ, 1 * n = n",
+      "∀ n : ℕ, n * 1 = n"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∀ n : ℕ, n * 1 = n",
+        "∀ n : ℕ, 1 * n = n"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "n * 1 = n",
+        "1 * n = n"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∀ n : ℕ, n * 1 = n",
+        "∀ n : ℕ, 1 * n = n"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    }
+  ],
+  "errors": [],
+  "raw_responses": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\ntheorem identity_mul_left : ∀ n : ℕ, n * 1 = n := by sorry\ntheorem identity_mul_right : ∀ n : ℕ, 1 * n = n := by sorry\n```\n```json\n{\"subgoal_ids\": [\"identity_mul_left\", \"identity_mul_right\"], \"root_name\": \"reduction\"}\n```"
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: n * 1 = n for all natural numbers n\ntheorem mul_one_left (n : ℕ) : n * 1 = n :=\nbegin\n  induction n with d hd,\n  { -- Base case: when n is zero\n    simp [nat.mul, nat.zero_mul], },\n  { -- Inductive step: assume the statement holds for d and prove it for d + 1\n    rw [nat.succ_eq_add_one, add_mul],\n    rw ← hd,\n    simp [add_comm] }\nend\n\n-- Lemma 2: 1 * n = n for all natural numbers n\ntheorem mul_one_right (n : ℕ) : 1 * n = n :=\nbegin\n  induction n with d hd,\n  { -- Base case: when n is zero\n    simp [nat.mul, nat.one_mul], },\n  { -- Inductive step: assume the statement holds for d and prove it for d + 1\n    rw [nat.succ_eq_add_one, mul_add],\n    rw ← hd,\n    simp [add_comm] }\nend\n\n-- Reduction theorem that uses the above lemmas to conclude the target statement\ntheorem reduction (h₁ : ∀ n : ℕ, n * 1 = n) (h₂ : ∀ n : ℕ, 1 * n = n) :\n  ∀ n : ℕ, n * 1 = n ∧ 1 * n = n :=\nbegin\n  intro n,\n  split,\n  { apply h₁ n },\n  { apply h₂ n }\nend\n```\n\n```json\n{\"subgoal_ids\": [\"mul_one_left\", \"mul_one_right\"], \"root_name\": \"reduction\"}\n```\n\n### Explanation\n\n- **Lemma `mul_one_left`**: This lemma proves that multiplying any natural number \\( n \\) by 1 results in \\( n \\). The proof uses induction on \\( n \\), handling the base case where \\( n = 0 \\) and the inductive step for \\( n = d + 1 \\).\n\n- **Lemma `mul_one_right`**: This lemma proves that multiplying 1 by any natural number \\( n \\) results in \\( n \\). Similar to `mul_one_left`, it uses induction on \\( n \\), handling both the base case and the inductive step.\n\n- **Reduction Theorem**: The reduction theorem combines the two lemmas to prove the target statement. It takes the hypotheses of the two lemmas and applies them to conclude that for any natural number \\( n \\), both \\( n * 1 = n \\) and \\( 1 * n = n \\) hold.\n\nThis solution provides a complete proof for the target statement using verified reductions in Lean, with all subgoals closed."
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "truncated": false,
+      "text": "```lean\nimport Mathlib\n\n-- Lemma 1: Proving n * 1 = n\ntheorem n_mul_one : ∀ n : ℕ, n * 1 = n := by\n  intro n\n  -- This property is a standard identity proven in Mathlib.\n  exact Nat.mul_one n\n\n-- Lemma 2: Proving 1 * n = n\ntheorem one_mul_n : ∀ n : ℕ, 1 * n = n := by\n  intro n\n  -- This property is also a standard identity proven in Mathlib.\n  exact Nat.mul_one n\n\n-- Reduction theorem: Combining the two identities to prove the target statement.\ntheorem reduction : (∀ n : ℕ, n * 1 = n) → (∀ n : ℕ, 1 * n = n) → (∀ n : ℕ, n * 1 = n ∧ 1 * n = n) :=\nby\n  intro h1 h2\n  -- We need to prove ∀ n : ℕ, n * 1 = n ∧ 1 * n = n.\n  -- This requires proving the conjunction for an arbitrary n.\n  fun n =>\n    -- The first conjunct (n * 1 = n) is exactly the statement h1.\n    -- The second conjunct (1 * n = n) is exactly the statement h2.\n    -- Since h1 and h2 are quantified statements, we need to apply them to n.\n    -- h1 : ∀ n : ℕ, n * 1 = n\n    -- h2 : ∀ n : ℕ, 1 * n = n\n    -- We use the hypothesis h1 to get n * 1 = n, and h2 to get 1 * n = n.\n    let left_eq : n * 1 = n := h1 n\n    let right_eq : 1 * n = n := h2 n\n    -- Now we combine them into a conjunction.\n    exact ⟨left_eq, right_eq⟩\n```\n\n```json\n{\"subgoal_ids\": [\"n_mul_one\", \"one_mul_n\"], \"root_name\": \"reduction\"}\n```"
+    }
+  ]
+}

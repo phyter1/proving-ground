@@ -91,6 +91,8 @@ def _run_once(problem: Problem, runners: list[OpenAICompatibleRunner], out_path:
         "consensus": {
             "consensus_score": result.consensus.consensus_score if result.consensus else None,
             "hardness_score": result.consensus.hardness_score if result.consensus else None,
+            "n_invalid": result.consensus.n_invalid if result.consensus else None,
+            "n_distinct_models": result.consensus.n_distinct_models if result.consensus else None,
             "novel_statements": list(result.consensus.novel_statements) if result.consensus else [],
         } if result.consensus else None,
         "entries": [
