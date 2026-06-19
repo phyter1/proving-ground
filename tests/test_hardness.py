@@ -153,9 +153,12 @@ def test_all_subgoals_exact_echo_multi_is_degenerate():
 
 
 def test_partial_echo_multi_not_degenerate():
-    # One echo + one real subgoal → not degenerate (real work present).
+    # One echo + one real (low-containment) subgoal → not degenerate.
+    # "Even 0 ∨ Odd 0" is a specific instance but its token-containment with
+    # "∀ n : ℕ, Even n ∨ Odd n" is ~0.75 (below the 0.9 threshold).
     d = _decomp("conj-1", [THEOREM, "Even 0 ∨ Odd 0"], target_statement=THEOREM)
     assert is_degenerate(d) is False
+
 
 
 # --- _token_containment -----------------------------------------------------

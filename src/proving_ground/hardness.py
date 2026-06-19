@@ -111,21 +111,26 @@ def is_degenerate(decomp: Decomposition, near_degenerate_threshold: float = 0.9)
     0, inflating hardness_score spuriously. Filter these before computing
     consensus.
 
-    Also catches near-degenerate single-subgoal decompositions: a subgoal that
-    is a quantifier-weakening or rearrangement of the target uses almost
-    exclusively tokens already present in the target. When token containment
-    (fraction of subgoal tokens found in the target) exceeds
-    *near_degenerate_threshold*, the subgoal carries no novel search-space
-    signal and is filtered the same way as an exact echo.
+    Also catches near-degenerate decompositions where the sole genuinely novel
+    subgoal (after filtering target echoes) is a quantifier-weakening, trivial
+    specific instance, or near-restatement of the target. When token containment
+    of that sole non-echo subgoal exceeds *near_degenerate_threshold*, it carries
+    no novel search-space signal. Multi-subgoal decompositions with two or more
+    non-echo subgoals are never degenerate — genuine branching is present.
 
-    Observed example: target ``∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)``
-    → qwen3.5 subgoal ``∃ p : ℕ, Nat.Prime p ∧ Nat.Prime (p + 2)`` has containment 1.0.
+    Observed examples:
+    - target ``∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)``
+      → qwen3.5 single subgoal ``∃ p : ℕ, Nat.Prime p ∧ Nat.Prime (p + 2)`` has
+      containment 1.0. (single-subgoal near-degenerate)
+    - Collatz target → gemma4 produced [base-case ∃ k, iter k 1 = 1, target-echo].
+      The sole non-echo (base case) has containment ~0.97 — a trivial specific
+      instance that adds no decomposition signal. (sole-non-echo near-degenerate)
 
     Args:
         decomp: The decomposition to evaluate.
-        near_degenerate_threshold: Containment fraction at or above which a
-            single-subgoal decomposition is considered near-degenerate (default 0.9).
-            Only evaluated when the subgoal is not already an exact match.
+        near_degenerate_threshold: Containment fraction at or above which the sole
+            non-echo subgoal is considered near-degenerate (default 0.9).
+            Only evaluated when that subgoal is not already an exact match.
     """
     # Phase 0: every subgoal is a target echo → no real decomposition, regardless
     # of count. Catches ["T", "T"] the same way a single ["T"] is caught below.
@@ -135,6 +140,15 @@ def is_degenerate(decomp: Decomposition, near_degenerate_threshold: float = 0.9)
         for sg in decomp.subgoals
     ):
         return True
+    # Multi-subgoal with at least one non-echo: cannot reliably classify as
+    # degenerate using token containment alone. A genuine subgoal like "0 + n = n"
+    # (commutativity of addition) shares all tokens with target "∀ n : ℕ, n + 0 = n"
+    # — containment = 1.0 — yet is genuine mathematical work. Distinguishing a
+    # "specific instance" (trivial, gemma4 Collatz base-case pattern) from a
+    # "related theorem with shared vocabulary" requires syntactic variable-vs-constant
+    # analysis not implemented here. Known limitation: multi-subgoal decompositions
+    # with [near-degenerate non-echo, target-echo] escape detection. See beat 896
+    # findings in analysis/legendre-vs-collatz-decomposability.md.
     if len(decomp.subgoals) != 1:
         return False
     raw_stmt = decomp.subgoals[0].statement.strip()

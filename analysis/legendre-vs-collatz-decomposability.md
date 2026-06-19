@@ -222,8 +222,109 @@ meaningless until we collect more runs.
 
 **Next step:** Run Legendre v3, v4, v5 with the same config to build a k=5 degeneracy rate
 per model. gpt-oss needs a separate fix (consistent timeouts suggest the ren4 Ollama model
-swap isn't happening fast enough — try with `OLLAMA_KEEP_ALIVE` or pre-loading the model
-before collection run).
+swap isn't happening fast enough — try pre-loading the model before collection run).
+
+### Legendre v3 run (beat 899, ren1, 2026-06-19)
+
+gpt-oss-20b pre-warmed before collection (loaded model manually, confirmed response before
+starting run). All 3 models completed. Output: `runs/collection-legendre-ren1-local-v3.json`.
+
+Results:
+- **ren3/qwen3.5-9b-mlx** → is_degenerate: **true**. Same full restatement (3rd consecutive).
+- **ren4/gpt-oss-20b** → is_degenerate: **false**. Single subgoal:
+  `∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p ∧ p % 2 = 1`
+- **ren2/gemma4-e2b** → is_degenerate: **true**. Same single conjunction as v2.
+- consensus_score: **null**, hardness_score: **null** (only 1 non-degenerate, needs ≥2)
+
+**gpt-oss-20b spurious-constraint pattern confirmed.** The model added `∧ p % 2 = 1` (p is
+odd). On Collatz (v1), gpt-oss added `∧ k ≤ 100`. The pattern is model-specific, not
+problem-specific: gpt-oss-20b consistently strengthens the target with random side conditions
+rather than decomposing it. This is **confusion-driven non-degeneracy** — the model doesn't
+have a decomposition strategy, it just adds unnecessary predicates. The output escapes
+`is_degenerate` because it's token-novel, but it's mathematically weaker information than
+the target (the added constraint narrows the existential claim without leverage).
+
+**Rate picture after v1-v3 (k=3 for qwen3.5/gemma4, k=1 for gpt-oss):**
+
+| Model | N | Degenerate | Rate | 95% CI (Wilson) | Notes |
+|-------|---|-----------|------|-----------------|-------|
+| qwen3.5-9b-mlx | 3 | 3 | 100% | [44%, 100%] | Stable restater |
+| gemma4-e2b | 3 | 2 | 67% | [21%, 94%] | Near boundary |
+| gpt-oss-20b | 1 | 0 | 0% | [0%, 79%] | Confusion-driven non-degen |
+
+The Wilson CIs overlap substantially — 3 runs per model is insufficient for discrimination.
+CI width is ±25-35 percentage points even at k=3. Need k≥5 for tighter estimates.
+
+**Critical observation:** The binary degeneracy comparison Legendre vs. Collatz goes in
+the *wrong direction* when counting rates naively. gemma4 is MORE degenerate on Legendre
+(67%) than Collatz (0%). But Collatz/gemma4's non-degenerate output is a trivial base case
+(`∃ k, iter k 1 = 1`) plus conjecture restatement — confusion-driven. Legendre/gemma4's
+one non-degenerate output (v1) was the existence-in-interval + primality split — structured.
+
+**The metric cannot distinguish these two types of non-degeneracy from the binary score.**
+The distinguishing signal lives in the content:
+- Collatz confusion: `iter k 1 = 1` (a trivially true specific case) + conjecture
+- Legendre structured: `∃ p, n² < p < (n+1)²` (interval condition) + `Nat.Prime p` (separate)
+- Legendre confusion (gpt-oss): original conjecture + `∧ p % 2 = 1` (irrelevant predicate)
+
+A theorem-name index (or structured-pattern matcher) is needed to automate this
+discrimination. Manual classification is feasible at this scale (3 problems × 3 models × 5
+runs) but won't scale to a benchmark with 50+ problems.
+
+## Refined metric proposal: three-way classification
+
+The binary `is_degenerate` flag conflates "confusion-driven non-degenerate" and
+"anchor-driven structured non-degenerate" outputs. Both escape the degenerate filter, but
+they carry different information. The correct classification is three-way:
+
+| Class | Description | Example |
+|-------|-------------|---------|
+| **degenerate** | Model restates the target or omits quantifiers | qwen3.5 on any open problem |
+| **confusion** | Non-degenerate but not anchored: spurious constraints or trivial splits | gpt-oss adds `∧ p % 2 = 1`; gemma4 adds base case + restatement |
+| **structured** | Non-degenerate and anchored: subgoals correspond to known partial results | gemma4 v1: existence-in-interval + primality (Bertrand-type) |
+
+### Refined hypothesis
+
+Instead of: "Legendre should have *lower* degeneracy rate than Collatz"
+
+The correct prediction: "Legendre should have *higher structured_non_degen rate* than Collatz"
+
+Manual classification from v1-v3 data:
+
+| Model | Problem | N | Degenerate | Structured | Confusion |
+|-------|---------|---|-----------|-----------|----------|
+| qwen3.5 | Legendre | 3 | 3 | 0 | 0 |
+| qwen3.5 | Collatz | 1 | 1 | 0 | 0 |
+| gemma4 | Legendre | 3 | 2 | 1 | 0 |
+| gemma4 | Collatz | 1 | 0 | 0 | 1 |
+| gpt-oss | Legendre | 1 | 0 | 0 | 1 |
+| gpt-oss | Collatz | 1 | 0 | 0 | 1 |
+
+**Legendre structured rate: 1/7 (14%)** vs. **Collatz structured rate: 0/3 (0%)**.
+Direction is correct (✓) but samples too small for statistical confidence.
+
+Model-specific patterns that emerge:
+- **qwen3.5**: always degenerate; anchor richness has no effect
+- **gpt-oss**: always confusion-non-degenerate; adds spurious constraints to target regardless of problem
+- **gemma4**: near the boundary; shows genuine structured output probabilistically on anchor-rich problems (Legendre), confusion output on anchor-poor problems (Collatz)
+
+The literature_anchors hypothesis is most load-bearing for gemma4-class models — those near
+the degeneracy boundary where anchor availability tips the decomposition strategy. Models
+that are robustly above or below the boundary aren't affected.
+
+### Implementation path for three-way classification
+
+1. **Confusion detection (automatic):** Check if any subgoal is the original target plus
+   additional conjuncts. If a subgoal contains the full target statement as a substring or
+   subformula, it's confusion-driven.
+
+2. **Structured detection (semi-automatic):** Check if subgoals match patterns from
+   `literature_anchors` in the problem metadata. For Legendre: look for existence-in-interval
+   without primality bundled in, OR explicit references to Bertrand-type intervals.
+
+3. **Fallback to manual:** Outputs that pass confusion check and don't match structured
+   patterns get a `needs_review` flag. At this scale, manual review takes ~30 seconds per
+   output.
 
 ## Connection to open question in first-run-findings
 
@@ -232,6 +333,7 @@ be exhaustive — even one anchor theorem per problem changes the decomposabilit
 gate criterion (2 named theorems in Mathlib or widely cited) is a cheap pre-filter for
 "will this problem produce structured null vs. degenerate null?"
 
-Recommended next step: add `literature_anchors` field to benchmark-v1.json entries,
-listing named theorems relevant to each problem. This gives the decomposability prediction
-before running any collection.
+The `literature_anchors` field is already in `benchmark-v1.json` for all open-tier problems.
+The next implementation step is adding the confusion-detection check to `is_degenerate`
+(or a separate `classify_output` function) so the rate script can produce three-way counts
+automatically rather than requiring manual review at scale.
