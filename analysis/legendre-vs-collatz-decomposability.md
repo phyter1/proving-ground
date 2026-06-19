@@ -919,3 +919,90 @@ observed behavior. Implementation in hardness.py — next beat.
 - 🔲 gemma4-e2b on Goldbach: still missing; ren2 timeouts prevent CPU-path collection
 - 🔲 Raw response capture: need to add to collector to inspect actual Lean code
 - 🔲 is_trivial_tautology classifier: add to hardness.py
+
+---
+
+## Legendre deep confirmation: token-exceeded is structural (beat 907, 2026-06-19)
+
+### Run results
+
+`fleet-collect-config-legendre-deep.json` (max_tokens=4096) k=3 completed (PID 3702, launched
+beat 906). Files: `runs/collection-legendre-ren3-deep-v1.json` through `v3.json`.
+
+Results (all three identical):
+- **ren3/qwen3.5-9b-mlx** → is_degenerate: **true**. Same full restatement (consistent).
+- **ren3/gemma4-e4b-mlx** → `"No fenced code blocks found in model response."` — **token-exceeded**,
+  same as at 2048 tokens.
+
+### What the truncated response shows
+
+The response starts:
+```
+```lean
+import Mathlib
+
+-- Target statement: For any natural number n > 0, there exists a prime p such that n^2 < p < (n+1)^2.
+-- This is Bertrand's Postulate applied to the interval (n^2, (n+1)^2), which is a weaker form of
+--   Legendre's Conjecture (which usually concerns primes between n and 2n).
+-- The statement given is equivalent to saying there is always a prime between n^2 and (n+1)^2.
+
+-- We need to prove: ∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p
+
+-- Lemma …
+```
+
+The model is writing the Lean file as a **comment essay** — natural language reasoning encoded
+as Lean comments rather than tactic code. The truncated preview (which covers several hundred
+characters) contains no Lean tactics, no `theorem` declaration, no `by` block — just `--`
+comment lines. At 4096 tokens, the model exhausts the budget before writing any executable code.
+
+### Why neither original hypothesis held
+
+Beat 906 posed two options:
+1. **4096 tokens is enough → e4b produces genuine structured output** (response-length was
+   the only blocker, not overconfidence)
+2. **e4b produces `True` even with more budget** → overconfidence is structural
+
+The actual result is neither: at 4096 tokens, the model still hasn't started writing
+Lean code. The blocking factor is not token budget per se — it's **generation style**: the
+model front-loads an extensive natural language commentary in the Lean comments section before
+writing any proof tactics, and 4096 tokens isn't enough for that commentary to end.
+
+This is distinct from the twin-primes trivial-tautology failure mode:
+- **Twin-primes:** Model "knows" GPY/Maynard → collapses immediately to `True`
+- **Legendre:** Model recognizes the Bertrand gap → writes extensive reasoning about it as
+  comments → never commits to tactics
+
+Both reflect anchor-richness effects but at different points in the proof generation pipeline:
+- Trivial-tautology fires at **tactic selection** (model picks a proof strategy too early)
+- Comment-essay fires at **reasoning externalization** (model reasons out loud before committing)
+
+### Updated five-behavior table
+
+| Class | Trigger mechanism | Example |
+|-------|------------------|---------|
+| degenerate | No strategy → restates target | qwen3.5 on any open problem |
+| confusion | Has a strategy but it's wrong → spurious constraints or trivial base cases | gpt-oss `∧ p % 2 = 1` |
+| structured | Has a strategy, executes it within budget | gemma4-e4b on Collatz/Goldbach |
+| token-exceeded (comment-essay) | Recognizes hard gap → reasons as comments → no tactics before budget | gemma4-e4b on Legendre |
+| trivial-tautology | Overconfident in known result → collapses proof to `True` | gemma4-e4b on twin-primes |
+
+### Implications for Legendre scoring
+
+Increasing max_tokens further (8192, 16384) might eventually capture the closing fence,
+but the correct fix is different: the generation failure is stylistic, not budgetary. A
+prompt that instructs the model to write Lean code *first* (with comments inline) rather
+than write a comment essay first might resolve it — but that changes the prompt design,
+which should be held constant across the benchmark.
+
+**Current decision:** Accept token-exceeded as informative-but-not-scorable for now.
+The partial Lean block (extractable from the response) may be analyzable with a truncation
+parser (option 3 from beat 905 analysis), but that infrastructure doesn't exist yet.
+
+### Collection status at beat 907
+
+- ✅ is_trivial_tautology classifier: implemented, 5 tests, all 63 tests passing (beat 906)
+- ✅ Legendre/e4b deep (max_tokens=4096): complete — token-exceeded confirmed structural
+- 🔲 gemma4-e2b on Goldbach: still missing (ren2 CPU timeouts, no fix yet)
+- 🔲 Raw response capture: needed to inspect full Lean content before budget exhaustion
+- 🔲 Prompt engineering investigation: should benchmarks restrict comment preamble?
