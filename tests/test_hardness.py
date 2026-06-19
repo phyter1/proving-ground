@@ -721,3 +721,79 @@ def test_validity_gate_n_invalid_zero_for_normal_structured_outputs():
     assert r.n_invalid == 0
     assert r.consensus_score is not None  # two valid models → Jaccard computed
     assert r.hardness_score is not None
+
+
+# --- diversity gate (n_distinct_models) -------------------------------------
+
+
+def test_no_model_ids_n_distinct_is_zero():
+    # When model_ids is omitted, n_distinct_models is 0 — no diversity tracking.
+    s1 = _decomp("conj-1", ["A → B", "B → C"])
+    s2 = _decomp("conj-1", ["A → B", "C → D"])
+    r = compute_consensus("conj-1", [s1, s2])
+    assert r.n_distinct_models == 0
+    assert r.consensus_score is not None  # diversity gate inactive without IDs
+
+
+def test_two_distinct_models_computes_jaccard():
+    # Two valid decompositions from two different model IDs → Jaccard computed.
+    s1 = _decomp("goldbach", ["∃ k : ℤ, n = 2 * k", "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"], target_statement=GOLDBACH)
+    s2 = _decomp("goldbach", ["∃ k : ℤ, n = 2 * k", "n = p + q"], target_statement=GOLDBACH)
+    r = compute_consensus("goldbach", [s1, s2], model_ids=["ren3/gemma4-e2b", "ren3/qwen3.5-9b-mlx"])
+    assert r.n_distinct_models == 2
+    assert r.consensus_score is not None
+    assert r.hardness_score is not None
+
+
+def test_diversity_gate_same_model_three_runs_returns_none():
+    # Goldbach beat 910 pattern: validity gate filters gemma4-e4b (reference-only),
+    # leaving gemma4-e2b × 3 identical runs. Jaccard is trivially 1.0 — not cross-model
+    # signal. Diversity gate must suppress to None.
+    s = _decomp(
+        "goldbach",
+        ["∃ k : ℤ, n = 2 * k", "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"],
+        target_statement=GOLDBACH,
+    )
+    model_ids = ["ren3/gemma4-e2b", "ren3/gemma4-e2b", "ren3/gemma4-e2b"]
+    r = compute_consensus("goldbach", [s, s, s], model_ids=model_ids)
+    assert r.n_distinct_models == 1  # all from the same model
+    assert r.consensus_score is None
+    assert r.hardness_score is None
+    # Novel statements still collected — the decomposition is real even if undiversified
+    assert len(r.novel_statements) > 0
+
+
+def test_diversity_gate_invalid_and_same_model():
+    # Mixed: one reference-only (excluded by validity gate) + two runs of same model.
+    # After validity gate: 2 valid, but same model → diversity gate fires.
+    ref_only = _decomp("goldbach", ["lemma_3"], target_statement=GOLDBACH)
+    s = _decomp(
+        "goldbach",
+        ["∃ k : ℤ, n = 2 * k", "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"],
+        target_statement=GOLDBACH,
+    )
+    model_ids = ["ren3/gemma4-e4b", "ren3/gemma4-e2b", "ren3/gemma4-e2b"]
+    r = compute_consensus("goldbach", [ref_only, s, s], model_ids=model_ids)
+    assert r.n_invalid == 1  # ref_only excluded
+    assert r.n_distinct_models == 1  # only gemma4-e2b valid
+    assert r.consensus_score is None
+    assert r.hardness_score is None
+
+
+def test_diversity_gate_two_valid_different_models_one_invalid():
+    # Two different valid models + one invalid → diversity gate passes.
+    ref_only = _decomp("goldbach", ["lemma_3"], target_statement=GOLDBACH)
+    s1 = _decomp("goldbach", ["∃ k : ℤ, n = 2 * k", "∃ p : ℕ, Nat.Prime p ∧ p ∣ n"], target_statement=GOLDBACH)
+    s2 = _decomp("goldbach", ["∃ k : ℤ, n = 2 * k", "n = p + q"], target_statement=GOLDBACH)
+    model_ids = ["ren3/gemma4-e4b", "ren3/gemma4-e2b", "ren3/qwen3.5-9b-mlx"]
+    r = compute_consensus("goldbach", [ref_only, s1, s2], model_ids=model_ids)
+    assert r.n_invalid == 1
+    assert r.n_distinct_models == 2  # e2b and qwen3.5 both valid
+    assert r.consensus_score is not None
+    assert r.hardness_score is not None
+
+
+def test_diversity_gate_length_mismatch_raises():
+    s = _decomp("conj-1", ["A → B"])
+    with pytest.raises(ValueError, match="model_ids length"):
+        compute_consensus("conj-1", [s], model_ids=["m1", "m2"])

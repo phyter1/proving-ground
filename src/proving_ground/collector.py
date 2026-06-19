@@ -152,9 +152,11 @@ def collect(
         except Exception as exc:  # noqa: BLE001 — per-runner failure should not abort the batch
             errors.append((runner.name, f"{type(exc).__name__}: {exc}"))
 
+    model_names = [name for name, _ in entries]
     decompositions = [d for _, d in entries]
     consensus = (
-        compute_consensus(problem.id, decompositions) if decompositions else None
+        compute_consensus(problem.id, decompositions, model_ids=model_names)
+        if decompositions else None
     )
 
     return CollectionResult(

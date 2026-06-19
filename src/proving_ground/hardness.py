@@ -321,9 +321,16 @@ class ConsensusResult:
             Both classes produce spurious hardness inflation when paired against
             structured-correct outputs (Jaccard distance is maximised because their
             token sets share nothing with real propositions).
+        n_distinct_models: Number of distinct model identifiers among the valid
+            (non-degenerate, non-invalid) decompositions. ``0`` when model IDs were
+            not provided to ``compute_consensus``. When ``< 2``, Jaccard is not
+            computed — multiple runs of the same model produce trivially identical
+            sets (hardness → 0.0 spuriously) or trivially disjoint sets if the
+            model is non-deterministic (hardness → 1.0 spuriously).
         consensus_score: Mean pairwise Jaccard of valid lemma-statement sets
             (non-degenerate and non-invalid). None when fewer than 2 valid
-            decompositions exist — the signal is undefined, not zero hardness.
+            decompositions exist or when model IDs were provided but fewer than 2
+            distinct models contributed valid results.
         hardness_score: 1 - consensus_score, or None when consensus_score is None.
         novel_statements: Every statement introduced by at least one valid model
             but not already present in any earlier valid model's submission
@@ -334,6 +341,7 @@ class ConsensusResult:
     n_models: int
     n_degenerate: int
     n_invalid: int
+    n_distinct_models: int
     consensus_score: float | None
     hardness_score: float | None
     novel_statements: frozenset[str]
@@ -362,6 +370,7 @@ def _is_valid_for_consensus(decomp: Decomposition) -> bool:
 def compute_consensus(
     problem_id: str,
     decompositions: Sequence[Decomposition],
+    model_ids: Sequence[str] | None = None,
 ) -> ConsensusResult:
     """Compute a hardness signal from N models' decompositions of the same problem.
 
@@ -369,16 +378,30 @@ def compute_consensus(
     produced (earlier = higher seniority for novelty attribution). All entries must
     share the same ``target_id``.
 
+    *model_ids* is an optional parallel sequence of model identifier strings, one
+    per decomposition. When provided, the **diversity gate** fires: if fewer than 2
+    distinct model IDs appear among the valid (non-degenerate, non-invalid)
+    decompositions, ``consensus_score`` and ``hardness_score`` are ``None``. Multiple
+    runs of the same model produce agreement-by-construction rather than cross-model
+    signal — Jaccard between identical outputs from the same model is trivially 1.0
+    (hardness → 0.0 spuriously).
+
     Degenerate decompositions (sole subgoal == target statement) and invalid
     non-degenerate outputs (trivial tautologies, reference-only) are excluded
-    before computing Jaccard consensus. If fewer than 2 valid decompositions
-    remain, ``consensus_score`` and ``hardness_score`` are ``None``.
+    before computing Jaccard consensus.
 
     Raises:
         ValueError: If *decompositions* is empty.
+        ValueError: If *model_ids* is provided but has a different length than
+            *decompositions*.
     """
     if not decompositions:
         raise ValueError("compute_consensus requires at least one decomposition")
+    if model_ids is not None and len(model_ids) != len(decompositions):
+        raise ValueError(
+            f"model_ids length ({len(model_ids)}) must match decompositions length"
+            f" ({len(decompositions)})"
+        )
 
     n_degenerate = sum(1 for d in decompositions if is_degenerate(d))
     n_invalid = sum(
@@ -387,12 +410,22 @@ def compute_consensus(
     )
     real = [d for d in decompositions if _is_valid_for_consensus(d)]
 
+    # Diversity gate: compute distinct model IDs among valid decompositions.
+    if model_ids is not None:
+        n_distinct_models = len({
+            mid for mid, d in zip(model_ids, decompositions)
+            if _is_valid_for_consensus(d)
+        })
+    else:
+        n_distinct_models = 0
+
     if not real:
         return ConsensusResult(
             problem_id=problem_id,
             n_models=len(decompositions),
             n_degenerate=n_degenerate,
             n_invalid=n_invalid,
+            n_distinct_models=n_distinct_models,
             consensus_score=None,
             hardness_score=None,
             novel_statements=frozenset(),
@@ -409,16 +442,17 @@ def compute_consensus(
         novel.update(stmt_set - seen)
         seen.update(stmt_set)
 
-    if len(real) < 2:
-        # Cannot compute cross-model agreement with a single real decomposition.
-        # Return None rather than the pairwise_jaccard default of 1.0 (which
-        # would imply "trivially tractable" — a false signal when only one model
-        # produced a valid result).
+    if len(real) < 2 or (model_ids is not None and n_distinct_models < 2):
+        # Cannot compute meaningful cross-model agreement:
+        # - fewer than 2 valid decompositions, OR
+        # - model IDs provided but all valid decompositions are from the same model
+        #   (trivially identical agreement — not a hardness signal).
         return ConsensusResult(
             problem_id=problem_id,
             n_models=len(decompositions),
             n_degenerate=n_degenerate,
             n_invalid=n_invalid,
+            n_distinct_models=n_distinct_models,
             consensus_score=None,
             hardness_score=None,
             novel_statements=frozenset(novel),
@@ -431,6 +465,7 @@ def compute_consensus(
         n_models=len(decompositions),
         n_degenerate=n_degenerate,
         n_invalid=n_invalid,
+        n_distinct_models=n_distinct_models,
         consensus_score=consensus,
         hardness_score=1.0 - consensus,
         novel_statements=frozenset(novel),
