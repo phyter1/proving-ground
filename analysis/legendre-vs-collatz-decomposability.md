@@ -1335,6 +1335,25 @@ Neither is implemented yet. Recording as the next layer of the metric.
 - ✅ Multi-model Goldbach: hardness=1.0, n_distinct=3 (diversity gate now passes)
 - ✅ Discrimination problem: raw Jaccard conflates proof-path multiplicity with genuine confusion
 - ✅ Output serialization: n_distinct_models + n_invalid now in consensus JSON
+- ✅ Canonical decomposition check: `_extract_top_level_conjuncts()` extracts conjuncts for A∧B targets; `n_canonical_match` counts models that reproduced them exactly (beat 913)
 - 🔲 Soundness filter: classify subgoals as sound vs. unsound (requires key-term check or Lean)
-- 🔲 Canonical decomposition check: conjunctive problems have trivial expected decomposition
 - 🔲 Structured-correct vs. structured-misdirected: closely related to soundness filter above
+
+### Calibration interpretation with canonical check (beat 913)
+
+For `tractable-consecutive` (target: `∀ n : ℕ, n ≤ n + 1 ∧ 2 ∣ n * (n + 1)`):
+- `canonical_conjuncts`: `{n ≤ n + 1, 2 ∣ n * (n + 1)}`
+- `n_canonical_match`: 2/3 (phi4 and gemma4-e4b exact; gemma4-e2b produced implication instead of conjunction)
+- Hardness=0.44 correctly reflects partial agreement around the canonical structure
+
+For `tractable-even-or-odd` (target: disjunction):
+- `canonical_conjuncts`: None (disjunction has no canonical decomposition)
+- `n_canonical_match`: None
+- Hardness=1.0 reflects proof-path entropy, not difficulty — now explicitly flagged by canonical_conjuncts=None
+
+For `goldbach` (target: universal implication into existential):
+- `canonical_conjuncts`: None (top-level `→` blocks extraction)
+- `n_canonical_match`: None
+- Hardness=1.0 reflects genuine search-space confusion — same flag as even-or-odd, but the *reason* differs (confusion vs. path multiplicity)
+
+**Remaining discrimination gap**: canonical_conjuncts=None does not itself discriminate "easy with multiple proof routes" from "hard with confused attempts" — both are None. The distinction requires either Lean verification or key-term soundness checking (still open). What the canonical check DOES provide: for conjunctive problems, n_canonical_match tells us how many models understood the decomposition structure. This is the most actionable metric for conjunctive calibration problems.

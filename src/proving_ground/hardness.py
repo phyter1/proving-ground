@@ -288,6 +288,78 @@ def is_reference_only(decomp: Decomposition) -> bool:
     return all(_is_bare_identifier(sg.statement) for sg in decomp.subgoals)
 
 
+def _split_top_level(s: str, sep: str) -> list[str]:
+    """Split *s* on *sep*, ignoring occurrences inside matched brackets.
+
+    Recognises ``()``, ``[]``, ``{}``, and ``⟨⟩`` as bracket pairs.
+    The separator is matched literally as a substring.
+    """
+    _OPEN = set("([{⟨")
+    _CLOSE: dict[str, str] = {")": "(", "]": "[", "}": "{", "⟩": "⟨"}
+    depth = 0
+    parts: list[str] = []
+    current: list[str] = []
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if c in _OPEN:
+            depth += 1
+            current.append(c)
+            i += 1
+        elif c in _CLOSE:
+            depth = max(0, depth - 1)
+            current.append(c)
+            i += 1
+        elif depth == 0 and s[i:].startswith(sep):
+            parts.append("".join(current).strip())
+            current = []
+            i += len(sep)
+        else:
+            current.append(c)
+            i += 1
+    if current:
+        parts.append("".join(current).strip())
+    return parts
+
+
+def _extract_top_level_conjuncts(statement: str) -> frozenset[str] | None:
+    """Return normalized conjunction conjuncts when *statement* is a top-level conjunction.
+
+    Strips a leading ``∀`` prefix, then splits on top-level ``∧`` (respecting
+    brackets).  Returns ``None`` when the normalized body is not a pure conjunction:
+    i.e., when a top-level ``→`` or ``↔`` appears before the first ``∧`` (which
+    would indicate an implication whose conclusion happens to be a conjunction, not
+    a split-able conjunction of the whole claim).
+
+    Examples::
+
+        '∀ n : ℕ, n ≤ n + 1 ∧ 2 ∣ n * (n + 1)'
+            → frozenset({'n ≤ n + 1', '2 ∣ n * (n + 1)'})
+
+        '∀ n : ℕ, Even n ∨ Odd n'  (disjunction, not conjunction)
+            → None
+
+        '∀ n, 2 < n → ∃ p q, ...'  (implication)
+            → None
+    """
+    norm = _normalize_statement(statement.strip()).strip()
+    if not norm:
+        return None
+    # Reject implication or biconditional at top level — a conjunction that only
+    # appears in the conclusion of an implication is not a split-able decomposition.
+    top_tokens = _split_top_level(norm, "→")
+    if len(top_tokens) > 1:
+        return None
+    top_tokens = _split_top_level(norm, "↔")
+    if len(top_tokens) > 1:
+        return None
+    conjuncts = _split_top_level(norm, "∧")
+    if len(conjuncts) < 2:
+        return None
+    # Normalize each conjunct (strip its own ∀ prefix if present).
+    return frozenset(_normalize_statement(c) for c in conjuncts if c)
+
+
 def pairwise_jaccard(sets: Sequence[frozenset[str]]) -> float:
     """Mean pairwise Jaccard similarity across all pairs in *sets*.
 
@@ -335,6 +407,15 @@ class ConsensusResult:
         novel_statements: Every statement introduced by at least one valid model
             but not already present in any earlier valid model's submission
             (ordered by first appearance; frozenset for hashability).
+        canonical_conjuncts: The normalized conjunction conjuncts extracted from
+            the target statement when it is a top-level conjunction (``A ∧ B``).
+            ``None`` for non-conjunctive targets (disjunctions, implications,
+            existentials).  When non-None, ``n_canonical_match`` reports how many
+            valid models reproduced this exact decomposition.
+        n_canonical_match: Number of valid models whose normalized decomposition
+            set equals ``canonical_conjuncts`` exactly.  ``None`` when the target
+            is not a conjunction (``canonical_conjuncts is None``).  A model that
+            produces extra or different subgoals does not count as a match.
     """
 
     problem_id: str
@@ -345,6 +426,8 @@ class ConsensusResult:
     consensus_score: float | None
     hardness_score: float | None
     novel_statements: frozenset[str]
+    canonical_conjuncts: frozenset[str] | None
+    n_canonical_match: int | None
 
 
 def _is_valid_for_consensus(decomp: Decomposition) -> bool:
@@ -419,6 +502,10 @@ def compute_consensus(
     else:
         n_distinct_models = 0
 
+    # Canonical decomposition: extract expected conjuncts when target is a conjunction.
+    # Use the first decomposition's target_statement (all should share the same target).
+    canonical_conjuncts = _extract_top_level_conjuncts(decompositions[0].target_statement)
+
     if not real:
         return ConsensusResult(
             problem_id=problem_id,
@@ -429,6 +516,8 @@ def compute_consensus(
             consensus_score=None,
             hardness_score=None,
             novel_statements=frozenset(),
+            canonical_conjuncts=canonical_conjuncts,
+            n_canonical_match=0 if canonical_conjuncts is not None else None,
         )
 
     # Raw sets for novel-statement attribution (preserve display strings).
@@ -441,6 +530,14 @@ def compute_consensus(
     for stmt_set in raw_sets:
         novel.update(stmt_set - seen)
         seen.update(stmt_set)
+
+    # Canonical match: count valid models whose normalized subgoal set exactly
+    # equals the expected conjuncts.  Only meaningful for conjunctive targets.
+    n_canonical_match: int | None
+    if canonical_conjuncts is not None:
+        n_canonical_match = sum(1 for ns in norm_sets if ns == canonical_conjuncts)
+    else:
+        n_canonical_match = None
 
     if len(real) < 2 or (model_ids is not None and n_distinct_models < 2):
         # Cannot compute meaningful cross-model agreement:
@@ -456,6 +553,8 @@ def compute_consensus(
             consensus_score=None,
             hardness_score=None,
             novel_statements=frozenset(novel),
+            canonical_conjuncts=canonical_conjuncts,
+            n_canonical_match=n_canonical_match,
         )
 
     consensus = pairwise_jaccard(norm_sets)
@@ -469,6 +568,8 @@ def compute_consensus(
         consensus_score=consensus,
         hardness_score=1.0 - consensus,
         novel_statements=frozenset(novel),
+        canonical_conjuncts=canonical_conjuncts,
+        n_canonical_match=n_canonical_match,
     )
 
 

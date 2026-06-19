@@ -94,6 +94,12 @@ def _run_once(problem: Problem, runners: list[OpenAICompatibleRunner], out_path:
             "n_invalid": result.consensus.n_invalid if result.consensus else None,
             "n_distinct_models": result.consensus.n_distinct_models if result.consensus else None,
             "novel_statements": list(result.consensus.novel_statements) if result.consensus else [],
+            "canonical_conjuncts": (
+                sorted(result.consensus.canonical_conjuncts)
+                if result.consensus and result.consensus.canonical_conjuncts is not None
+                else None
+            ),
+            "n_canonical_match": result.consensus.n_canonical_match if result.consensus else None,
         } if result.consensus else None,
         "entries": [
             {

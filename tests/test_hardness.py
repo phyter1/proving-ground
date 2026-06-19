@@ -6,6 +6,7 @@ import pytest
 
 from proving_ground.hardness import (
     ConsensusResult,
+    _extract_top_level_conjuncts,
     _is_target_echo,
     _normalize_statement,
     _token_containment,
@@ -797,3 +798,64 @@ def test_diversity_gate_length_mismatch_raises():
     s = _decomp("conj-1", ["A → B"])
     with pytest.raises(ValueError, match="model_ids length"):
         compute_consensus("conj-1", [s], model_ids=["m1", "m2"])
+
+
+# --- _extract_top_level_conjuncts -------------------------------------------
+
+CONSECUTIVE = "∀ n : ℕ, n ≤ n + 1 ∧ 2 ∣ n * (n + 1)"
+EVEN_OR_ODD = "∀ n : ℕ, Even n ∨ Odd n"
+GOLDBACH_TARGET = "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n"
+ADD_IDS = "∀ n : ℕ, n + 0 = n ∧ 0 + n = n"
+
+
+def test_extract_conjuncts_conjunction():
+    result = _extract_top_level_conjuncts(CONSECUTIVE)
+    assert result == frozenset({"n ≤ n + 1", "2 ∣ n * (n + 1)"})
+
+
+def test_extract_conjuncts_disjunction_returns_none():
+    assert _extract_top_level_conjuncts(EVEN_OR_ODD) is None
+
+
+def test_extract_conjuncts_implication_returns_none():
+    # Goldbach has top-level →; the ∧ inside the ∃ should not be extracted.
+    assert _extract_top_level_conjuncts(GOLDBACH_TARGET) is None
+
+
+def test_extract_conjuncts_simple_conjunction():
+    result = _extract_top_level_conjuncts(ADD_IDS)
+    assert result == frozenset({"n + 0 = n", "0 + n = n"})
+
+
+# --- canonical match in compute_consensus -----------------------------------
+
+
+def test_canonical_match_conjunction_target():
+    target = CONSECUTIVE
+    # phi4 and gemma4-e4b both hit canonical: {n ≤ n + 1, 2 ∣ n * (n + 1)}
+    d_canonical_a = _decomp("consecutive", ["∀ n : ℕ, n ≤ n + 1", "∀ n : ℕ, 2 ∣ n * (n + 1)"], target_statement=target)
+    d_canonical_b = _decomp("consecutive", ["n ≤ n + 1", "2 ∣ n * (n + 1)"], target_statement=target)
+    # gemma4-e2b confused conjunction with implication
+    d_confused = _decomp("consecutive", ["∀ n : ℕ, n ≤ n + 1 → 2 ∣ n * (n + 1)", "∀ n : ℕ, n ≤ n + 1"], target_statement=target)
+    r = compute_consensus("consecutive", [d_canonical_a, d_canonical_b, d_confused],
+                          model_ids=["m1", "m2", "m3"])
+    assert r.canonical_conjuncts == frozenset({"n ≤ n + 1", "2 ∣ n * (n + 1)"})
+    assert r.n_canonical_match == 2  # only the two canonical decompositions match
+
+
+def test_canonical_match_disjunction_target_is_none():
+    target = EVEN_OR_ODD
+    d1 = _decomp("eoo", ["∀ n : ℕ, Even n → Even n ∨ Odd n", "∀ n : ℕ, Odd n → Even n ∨ Odd n"], target_statement=target)
+    d2 = _decomp("eoo", ["Even 0 ∨ Odd 0", "∀ k : ℕ, (Even k ∨ Odd k) → (Even (k+1) ∨ Odd (k+1))"], target_statement=target)
+    r = compute_consensus("eoo", [d1, d2], model_ids=["m1", "m2"])
+    assert r.canonical_conjuncts is None
+    assert r.n_canonical_match is None
+
+
+def test_canonical_match_no_valid_decompositions():
+    target = CONSECUTIVE
+    # All degenerate → no valid decompositions, n_canonical_match=0
+    d_degen = _decomp("consecutive", [target], target_statement=target)
+    r = compute_consensus("consecutive", [d_degen])
+    assert r.canonical_conjuncts == frozenset({"n ≤ n + 1", "2 ∣ n * (n + 1)"})
+    assert r.n_canonical_match == 0
