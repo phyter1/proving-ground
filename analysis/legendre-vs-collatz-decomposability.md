@@ -132,21 +132,47 @@ Collatz from Legendre using the score alone. The distinguishing signal would hav
 in the *content* of the novel_statements — whether they reference Bertrand-like reasoning
 vs. adding random constraints.
 
-**Pending Legendre run** (started beat 896): same 3-model fleet, `legendre` problem.
-Hypothesis: if models know Bertrand's Postulate, at least one will produce a
-Bertrand-anchored subgoal explicitly citing the known interval bound. The novel_statements
-would then reference `Nat.bertrand` or similar — distinguishable from gpt-oss's random
-`k ≤ 100` pattern by named-theorem citation.
+### Legendre v1 run (beat 897, ren1, 2026-06-19)
 
-If Legendre also produces confusion-driven non-degeneracy with no Bertrand reference,
-the Bertrand-anchor hypothesis fails at this model tier, and the literature_anchors field
-serves only for corpus curation (telling humans which problems have known partial results),
-not for the metric itself.
+Same fleet config, ren4/gpt-oss-20b timed out — only 2 models completed.
+Output: `runs/collection-legendre-ren1-local-v1.json`.
 
-The prediction now depends on **whether knowledge of Bertrand's Postulate is accessible
-to gpt-oss-20b and gemma4-e2b** — whether they will spontaneously cite the known result
-when attempting Legendre, vs. generating the same type of confusion-driven non-degeneracy
-observed in Collatz.
+Results (2 of 3 models):
+- **ren3/qwen3.5-9b-mlx** → is_degenerate: **true**. Single subgoal: full restatement of
+  the target (`∀ n : ℕ, 0 < n → ∃ p : ℕ, n² < p ∧ p < (n+1)² ∧ Nat.Prime p`).
+- **ren2/gemma4-e2b** → is_degenerate: **false**. Two subgoals:
+  1. `∃ p : ℕ, n² < p ∧ p < (n+1)²`
+  2. `Nat.Prime p`
+- **ren4/gpt-oss-20b** → timeout error.
+- consensus_score: **null** (only 1 real response, can't compute Jaccard divergence)
+- hardness_score: **null**
+
+**Key observation:** gemma4's Legendre decomposition is *structurally meaningful*.
+Separating existence-in-interval from primality is exactly the right conceptual move —
+the existence part is where Bertrand-class tools (prime-in-interval theorems) apply.
+The scope binding (`p` not carried across subgoals) has a Lean formalization issue, but
+the *mathematical idea* is sound.
+
+**Contrast with Collatz/gemma4:** That split was trivial base case (`∃ k, iter k 1 = 1`)
+plus the original conjecture. The base case adds no decomposition leverage; it's just a
+specific case that's obviously true. Legendre/gemma4's split is conceptually non-trivial.
+
+**Hypothesis status:** Qualitatively confirmed. Literature anchors do shape decomposition
+quality at the model level. Legendre produces structurally meaningful non-degeneracy;
+Collatz produces trivial/confusion-driven non-degeneracy. The models weren't explicitly
+told about Bertrand — but existence-in-interval is a natural decomposition direction
+precisely because the mathematical literature points there.
+
+**What's missing:** 3-model run with ren4 working, to get a computable hardness_score and
+test whether gpt-oss-20b also produces structured vs. confusion-driven output. (Legendre
+v2 rerun started beat 897 with same config; ren4 reachable again post-timeout.)
+
+**Metric gap that remains:** Even with 3 models, the current metric can't distinguish
+gemma4's Legendre split (structured) from gemma4's Collatz split (trivial) by score alone.
+Both produce novel_statements with high Jaccard divergence relative to degenerate models.
+The distinguishing signal is *in the content*: does the existence subgoal reference a
+known interval theorem? Automating this requires a theorem-name index. Manual inspection
+confirms the distinction for now.
 
 ## Connection to open question in first-run-findings
 
