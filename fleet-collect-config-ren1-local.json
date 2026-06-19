@@ -1,0 +1,20 @@
+{
+  "models": [
+    {
+      "name": "ren3/qwen3.5-9b-mlx",
+      "model": "mlx-community/Qwen3.5-9B-MLX-4bit",
+      "base_url": "http://ren3.local:3000/v1"
+    },
+    {
+      "name": "ren4/gpt-oss-20b",
+      "model": "gpt-oss:20b",
+      "base_url": "http://ren4.local:11434/v1"
+    },
+    {
+      "name": "ren2/gemma4-e2b",
+      "model": "gemma4:e2b",
+      "base_url": "http://ren2.local:11434/v1"
+    }
+  ],
+  "_note": "3-model config using .local mDNS hostnames (IP addresses unreachable from ren1). Qwen (ren3/MLX) + OpenAI-family GPT-OSS (ren4) + Google Gemma (ren2). Config for ren1 heartbeat runs."
+}

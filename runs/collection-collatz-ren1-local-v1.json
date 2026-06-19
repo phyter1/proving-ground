@@ -1,0 +1,42 @@
+{
+  "problem_id": "collatz",
+  "n_models": 3,
+  "n_degenerate": 1,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": 0.0,
+    "hardness_score": 1.0,
+    "novel_statements": [
+      "∀ n : ℕ, 0 < n →\n    ∃ k : ℕ,\n      Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k n = 1 ∧ k ≤ 100",
+      "∃ k : ℕ, Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k 1 = 1"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/qwen3.5-9b-mlx",
+      "n_subgoals": 1,
+      "subgoals": [
+        "∀ n : ℕ, 0 < n → ∃ k : ℕ, Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k n = 1"
+      ],
+      "is_degenerate": true
+    },
+    {
+      "model": "ren4/gpt-oss-20b",
+      "n_subgoals": 1,
+      "subgoals": [
+        "∀ n : ℕ, 0 < n →\n    ∃ k : ℕ,\n      Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k n = 1 ∧ k ≤ 100"
+      ],
+      "is_degenerate": false
+    },
+    {
+      "model": "ren2/gemma4-e2b",
+      "n_subgoals": 2,
+      "subgoals": [
+        "∃ k : ℕ, Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k 1 = 1",
+        "∀ n : ℕ, 0 < n → ∃ k : ℕ, Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k n = 1"
+      ],
+      "is_degenerate": false
+    }
+  ],
+  "errors": []
+}

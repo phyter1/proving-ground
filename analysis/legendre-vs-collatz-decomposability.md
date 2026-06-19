@@ -91,14 +91,62 @@ Goldbach clears (Chen's other theorem: every large even = prime + semiprime; Vin
 
 ## Empirical verification
 
-This prediction is testable when fleet collection resumes (ENOSPC on ren1 currently
-blocking collection runs). Run both Collatz and Legendre through `fleet-collect`, compare
-N_real and hardness scores. If the prediction holds:
-- Legendre: N_real ≥ 2, hardness ∈ (0, 1)
-- Collatz: N_real < 2, hardness = null
+**Collatz run completed (beat 896, ren1, 2026-06-19):** 3-model fleet
+(ren3/qwen3.5-9b-mlx, ren4/gpt-oss-20b, ren2/gemma4-e2b).
+Config: `fleet-collect-config-ren1-local.json`. Output:
+`runs/collection-collatz-ren1-local-v1.json`.
 
-If Legendre also produces degenerate null, the Bertrand-anchor hypothesis is wrong and the
-literature-richness criterion needs revision.
+Unexpected result:
+- n_degenerate: **1** (qwen3.5 → exact restatement of target)
+- n_real: **2** (gpt-oss + gemma4)
+- consensus_score: **0.0** → hardness_score: **1.0**
+
+This is a false positive. The non-degenerate outputs are not genuine decompositions:
+- **gpt-oss**: single subgoal `∀ n : ℕ, 0 < n → ∃ k : ℕ, iter k n = 1 ∧ k ≤ 100` — added a
+  spurious `∧ k ≤ 100` bound. Mathematically wrong (the bound makes the problem easier
+  than the conjecture). Token-novel relative to the target, so not flagged as degenerate.
+- **gemma4**: two subgoals — trivial base case `∃ k, iter k 1 = 1` plus the original
+  conjecture restated. `is_degenerate` returns False because not all subgoals are echoes
+  (the base case is specific). But the second subgoal IS the target, making this the
+  "necessity / irredundancy" failure mode from `first-run-findings.md`.
+
+**Hardness_score = 1.0 is a false positive:** the models produced diverse garbage, not
+diverse genuine decompositions. Cross-model Jaccard divergence reflects *confusion* rather
+than *decomposition branching.*
+
+### New failure mode: confusion-driven non-degeneracy
+
+When models don't have a real decomposition strategy, they may:
+1. Add spurious constraints to the target (gpt-oss pattern: `∧ k ≤ 100`)
+2. Split into trivial base cases + original conjecture (gemma4 pattern)
+
+Both escape `is_degenerate` and inflate hardness_score. Confusion-driven non-degeneracy
+is structurally identical to anchor-driven non-degeneracy in the metric — both produce
+diverse, non-empty `novel_statements` with high Jaccard divergence. The score cannot
+distinguish them.
+
+**Implication for the literature_anchors hypothesis:** The Collatz result shifts the
+prediction. If Legendre produces similar confusion-driven non-degeneracy (different wrong
+things, high Jaccard divergence, hardness_score ≈ 1.0), the metric cannot discriminate
+Collatz from Legendre using the score alone. The distinguishing signal would have to live
+in the *content* of the novel_statements — whether they reference Bertrand-like reasoning
+vs. adding random constraints.
+
+**Pending Legendre run** (started beat 896): same 3-model fleet, `legendre` problem.
+Hypothesis: if models know Bertrand's Postulate, at least one will produce a
+Bertrand-anchored subgoal explicitly citing the known interval bound. The novel_statements
+would then reference `Nat.bertrand` or similar — distinguishable from gpt-oss's random
+`k ≤ 100` pattern by named-theorem citation.
+
+If Legendre also produces confusion-driven non-degeneracy with no Bertrand reference,
+the Bertrand-anchor hypothesis fails at this model tier, and the literature_anchors field
+serves only for corpus curation (telling humans which problems have known partial results),
+not for the metric itself.
+
+The prediction now depends on **whether knowledge of Bertrand's Postulate is accessible
+to gpt-oss-20b and gemma4-e2b** — whether they will spontaneously cite the known result
+when attempting Legendre, vs. generating the same type of confusion-driven non-degeneracy
+observed in Collatz.
 
 ## Connection to open question in first-run-findings
 
