@@ -1,5 +1,6 @@
 {
   "problem_id": "collatz",
+  "target_statement": "∀ n : ℕ, 0 < n → ∃ k : ℕ, Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k n = 1",
   "n_models": 3,
   "n_degenerate": 1,
   "n_errors": 0,

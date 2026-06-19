@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from proving_ground.collector import collect
-from proving_ground.hardness import is_degenerate
+from proving_ground.hardness import is_confusion_non_degenerate, is_degenerate
 from proving_ground.models import Problem, Tier
 from proving_ground.runner import OpenAICompatibleRunner
 
@@ -76,6 +76,7 @@ def main() -> None:
 
     output = {
         "problem_id": result.problem_id,
+        "target_statement": problem.statement,
         "n_models": len(runners),
         "n_degenerate": sum(1 for _, d in result.entries if is_degenerate(d)),
         "n_errors": len(result.errors),
@@ -90,6 +91,7 @@ def main() -> None:
                 "n_subgoals": len(d.subgoals),
                 "subgoals": [sg.statement for sg in d.subgoals],
                 "is_degenerate": is_degenerate(d),
+                "is_confusion": is_confusion_non_degenerate(d),
             }
             for name, d in result.entries
         ],

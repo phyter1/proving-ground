@@ -168,30 +168,50 @@ def is_degenerate(decomp: Decomposition, near_degenerate_threshold: float = 0.9)
 
 
 def is_confusion_non_degenerate(decomp: Decomposition) -> bool:
-    """Return True when a non-degenerate output uses the spurious-constraint pattern.
+    """Return True when a non-degenerate output is confusion-driven, not a genuine decomposition.
 
-    Detects the gpt-oss-20b failure mode: adding extra conjuncts to the target
-    statement rather than decomposing it (e.g. ``target ∧ k ≤ 100`` or
-    ``target ∧ p % 2 = 1``). The target appears as a literal prefix or
-    normalized-prefix of the subgoal.
+    Detects two confusion patterns:
+
+    1. **Spurious-constraint** (gpt-oss-20b pattern): a subgoal extends the target with
+       extra conjuncts without decomposing it (``target ∧ k ≤ 100``,
+       ``target ∧ p % 2 = 1``). The target appears as a prefix of the subgoal under
+       raw, normalized-quantifier, or whitespace-collapsed comparison.
+
+    2. **Echo-containing multi-subgoal** (gemma4 Collatz pattern): the decomposition
+       has multiple subgoals, at least one of which is a target echo. The echo means
+       the original problem is still present unsolved — the other subgoals are side
+       steps, not genuine reductions.
 
     Returns False for degenerate outputs (caller should check is_degenerate first).
-
-    Does NOT detect the gemma4 Collatz confusion pattern (trivial base case +
-    target echo), which is caught by is_degenerate via the multi-subgoal
-    near-degenerate path.
     """
     if is_degenerate(decomp):
         return False
     target = decomp.target_statement.strip()
     norm_target = _normalize_statement(target)
+    ws_target = " ".join(target.split())
+
+    # Pattern 1: spurious-constraint — any subgoal starts with the target plus extra.
     for sg in decomp.subgoals:
         stmt = sg.statement.strip()
+        # Raw prefix check.
         if stmt != target and stmt.startswith(target):
             return True
+        # Quantifier-normalized prefix check.
         norm_stmt = _normalize_statement(stmt)
         if norm_stmt != norm_target and norm_stmt.startswith(norm_target):
             return True
+        # Whitespace-collapsed prefix check — catches Lean pretty-printer line-wrapped output.
+        ws_stmt = " ".join(stmt.split())
+        if ws_stmt != ws_target and ws_stmt.startswith(ws_target):
+            return True
+
+    # Pattern 2: echo-containing multi-subgoal — at least one subgoal is a target echo,
+    # meaning the conjecture remains as an unsolved subgoal alongside side steps.
+    if len(decomp.subgoals) > 1 and any(
+        _is_target_echo(sg.statement, decomp.target_statement) for sg in decomp.subgoals
+    ):
+        return True
+
     return False
 
 

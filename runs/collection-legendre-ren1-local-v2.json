@@ -1,5 +1,6 @@
 {
   "problem_id": "legendre",
+  "target_statement": "∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p",
   "n_models": 3,
   "n_degenerate": 2,
   "n_errors": 1,
