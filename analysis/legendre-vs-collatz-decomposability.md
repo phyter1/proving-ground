@@ -482,3 +482,81 @@ axis is anchor richness within that class.
   Collatz predicted for gemma4.
 
 Results pending. Update doc when runs complete.
+
+---
+
+## Cross-problem rate comparison (beat 903, 2026-06-19)
+
+### Collatz 2-model results (runs v1-v3 + original local v1, k=4 qwen3.5, k=2 gemma4)
+
+After collecting 3 additional Collatz runs with the 2-model config (ren3/qwen3.5 + ren2/gemma4):
+
+| Model | N | Deg | Conf | Struct | DegRate | 95% CI |
+|-------|---|-----|------|--------|---------|--------|
+| ren3/qwen3.5-9b-mlx | 4 | 4 | 0 | 0 | 100% | [51%, 100%] |
+| ren2/gemma4-e2b | 2 | 0 | 2 | 0 | 0% | [0%, 66%] |
+| ren4/gpt-oss-20b | 1 | 0 | 1 | 0 | 0% | [0%, 79%] |
+
+ren2/gemma4 timed out in 2 of 3 new runs. The 2 successful completions both produced
+confusion output — the trivial base case + restatement pattern from beat 896.
+
+**Collatz gemma4 confusion output (confirmed both times):**
+```
+subgoal 1: ∃ k : ℕ, Function.iterate (...) k 1 = 1   -- trivial (n=1, 0 iterations)
+subgoal 2: ∀ n : ℕ, 0 < n → ∃ k : ℕ, Function.iterate (...) k n = 1   -- the conjecture
+```
+
+The pattern is stable across both successful Collatz/gemma4 runs: the model finds the one
+obvious "anchor" (n=1 terminates trivially) and pairs it with the full conjecture restated.
+This confirms the Collatz-no-anchor prediction: the only available anchor is a degenerate
+base case, not a mathematical partial result that shapes the proof direction.
+
+### Goldbach gap: ren2 timeout failure
+
+All 3 Goldbach ren2/gemma4 runs timed out. ren2 Ollama responds on `/api/tags` (healthy), but
+gemma4:e2b generation for Goldbach-length prompts consistently exceeds the 300s client timeout
+on ren2's CPU inference path.
+
+This is an infrastructure-coverage gap, not a model capability gap. ren2/Ollama runs gemma4
+on CPU (not GPU) for models above the GPU VRAM ceiling. Long math prompts produce more output
+tokens, which hits the time ceiling before completion.
+
+**Fix:** route gemma4 through ren3 MLX (which runs at 30-50 tok/s vs. ren2 CPU at <5 tok/s).
+New config `fleet-collect-config-ren3-dual.json` uses ren3 MLX for both models.
+
+ren3-dual runs launched (beat 903): Goldbach k=3 and Collatz k=3. Both in flight.
+
+### Cross-problem three-way rates (all data to date)
+
+| Model | Problem | N | Deg | Conf | Struct | Notes |
+|-------|---------|---|-----|------|--------|-------|
+| qwen3.5 | Legendre | 5 | 5 | 0 | 0 | Robustly degenerate |
+| qwen3.5 | Collatz | 4 | 4 | 0 | 0 | Robustly degenerate |
+| qwen3.5 | Goldbach | 3 | 3 | 0 | 0 | Robustly degenerate |
+| gemma4 | Legendre | 4 | 3 | 0 | 1 | Near boundary; 1 structured |
+| gemma4 | Collatz | 2 | 0 | 2 | 0 | Both confusion (trivial anchor) |
+| gemma4 | Goldbach | 0 | — | — | — | All timeouts; ren3-dual in flight |
+| gpt-oss | Legendre | 1 | 0 | 1 | 0 | Spurious-constraint confusion |
+| gpt-oss | Collatz | 1 | 0 | 1 | 0 | Spurious-constraint confusion |
+
+**qwen3.5 pattern:** Uniformly degenerate across all 3 open-tier problems (12/12). Not at the
+boundary for any. Literature anchors have zero observable effect on this model.
+
+**gpt-oss pattern:** Always confusion-non-degenerate; always adds spurious constraints. Also
+model-not-problem-specific. Excluded from further analysis.
+
+**gemma4 pattern:** The interesting case. Legendre shows 1 structured output (25% structured rate
+at N=4); Collatz shows 0 structured outputs with 100% confusion rate. Both sample sizes are too
+small for statistical confidence, but the qualitative direction is correct:
+
+- Collatz: no named mathematical anchor → model finds n=1 base case → confusion
+- Legendre: Bertrand/BHP anchors → model produced existence-in-interval + primality split (once)
+
+Goldbach prediction (pending ren3-dual results): gemma4 should produce structured output more
+frequently than Collatz. Goldbach has a strong Chen anchor (every sufficiently large even =
+prime + semiprime) and Vinogradov path (ternary Goldbach proven). These are richer than Collatz's
+n=1 base case and comparable to Legendre's Bertrand + BHP anchors.
+
+If Goldbach gemma4 structured rate > Collatz structured rate (0%), that confirms the anchor-richness
+gradient: Collatz (no anchor) < Legendre (Bertrand) ≈ Goldbach (Chen/Vinogradov) < twin-primes
+(GPY/Maynard). A flat result (both 0%) would challenge the hypothesis.
