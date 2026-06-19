@@ -1,0 +1,17 @@
+{
+  "models": [
+    {
+      "name": "ren3/gemma4-e4b-mlx",
+      "model": "mlx-community/gemma-4-e4b-it-4bit",
+      "base_url": "http://ren3.local:8080/v1",
+      "extra_body": {"max_tokens": 4096}
+    },
+    {
+      "name": "ren3/qwen3.5-9b-mlx",
+      "model": "mlx-community/Qwen3.5-9B-MLX-4bit",
+      "base_url": "http://ren3.local:8080/v1",
+      "extra_body": {"max_tokens": 4096}
+    }
+  ],
+  "_note": "Legendre-specific config with max_tokens=4096. gemma4-e4b-mlx exceeds 2048 tokens on Legendre before closing the Lean fence (3/3 token-exceeded errors in beat 905). 4096 tokens should capture a complete attempt. Use only for long-response problems — doubles collection time per run."
+}

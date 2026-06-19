@@ -682,3 +682,116 @@ subsequent quality layer — either manual inspection or a theorem-verifier pass
 3. **Twin primes k=3 with 2-model config** (ren1-2model or ren3-dual): establishes a clean
    baseline with either e2b or e4b and qwen3.5 — the current twin primes data is mixed-config
    old runs.
+
+---
+
+## Tier 3 model revision: token-exceeded on Legendre (beat 905, 2026-06-19)
+
+### ren3-dual Legendre results
+
+ren3-dual Legendre runs (v1-v3) completed since beat 904. Run files:
+`runs/collection-legendre-ren3-dual-v1.json` through `v3.json`.
+
+Results from `compute_rates.py --problem-id legendre --three-way`:
+
+| Model | N | Deg | Conf | Struct | Unknown | DegRate | 95% CI |
+|-------|---|-----|------|--------|---------|---------|--------|
+| ren2/gemma4-e2b | 4 | 3 | 0 | 1 | 0 | 75% | [30%, 95%] |
+| ren3/gemma4-e4b-mlx | 0 | 0 | 0 | 0 | 0 | N/A | N/A |
+| ren3/qwen3.5-9b-mlx | 8 | 8 | 0 | 0 | 0 | 100% | [68%, 100%] |
+
+**gemma4-e4b-mlx shows N=0 entries** — all 3 ren3-dual Legendre runs threw errors, not
+classified outputs. Inspecting the error records:
+
+```
+Error (all 3 runs): "No fenced code blocks found in model response."
+Response (truncated): ```lean
+import Mathlib
+-- Target statement: For any natural number n > 0, there exists a prime p such that n^2 < p < (n+1)^2.
+-- This is Bertrand's Postulate applied to the interval (n^2, (n+1)^2), which is a weaker form of
+--  Legendre's Conjecture...
+```
+
+The response starts with a Lean fenced code block but never closes it within the 2048-token
+budget. The current error handler treats this as "no fenced block found" (since the closing
+` ``` ` is absent), and the entry goes into the `errors` list rather than the classified output.
+
+**This is a fourth behavior type: token-exceeded.** The model opens a ` ```lean ` block and
+begins a legitimate proof attempt but runs out of output budget before closing the fence.
+
+### Token-exceeded as a distinct class
+
+Comparison with existing classes:
+
+| Class | Behavior | Example |
+|-------|----------|---------|
+| degenerate | Restates the conjecture, trivial reduction | qwen3.5 on any open problem |
+| confusion | Adds spurious constraints or trivial base case | gpt-oss `∧ p % 2 = 1` |
+| structured | Genuine subgoals within token budget | gemma4-e4b on Collatz/Goldbach |
+| **token-exceeded** | Real proof attempt, exceeds 2048 tokens before fence closes | gemma4-e4b on Legendre |
+
+Token-exceeded is NOT the same as structured: the output isn't usable for scoring since the
+Lean block is incomplete. But it's also NOT the same as degenerate or confusion: the content
+that IS present shows genuine mathematical reasoning (citing Bertrand, reasoning about the
+interval structure). For benchmark purposes:
+
+- **Not scorable** (no complete subgoals to classify)
+- **Informative** as a model behavior signal: the model recognizes the problem as requiring
+  more extensive reasoning than Collatz/Goldbach
+
+### Revision to the capability tier model
+
+Beat 904's Tier 3 characterization ("above threshold — consistently structured regardless of
+anchor richness") was premature. It was based on Collatz and Goldbach data only. Legendre
+data revises it:
+
+**Tier 3 (revised) — gemma4-e4b-mlx:**
+- Collatz: 3/3 structured (short proof attempt, fits in 2048 tokens)
+- Goldbach: 3/3 structured (short proof attempt, fits in 2048 tokens)
+- Legendre: 0/3 structured, 3/3 token-exceeded (longer proof attempt, exceeds 2048 tokens)
+
+The distinguishing factor is not anchor richness but **response length required for the
+model's proof strategy**. Legendre prompts the model to explain the Bertrand-to-Legendre
+gap (longer text), while Collatz/Goldbach elicit shorter proof sketches.
+
+**Updated capability characterization:**
+
+- **qwen3.5-9b-mlx:** Tier 1 — always degenerate (Legendre 8/8, Collatz 7/7, Goldbach 6/6).
+  Exception: twin primes 3/5 structured (richest anchors in corpus).
+
+- **gemma4-e2b:** Tier 2 — boundary-sensitive. Collatz 0/2 structured (trivial anchor),
+  Legendre 1/4 structured (Bertrand anchor), twin primes 3/3 structured (GPY/Maynard).
+  Anchor-richness gradient is the load-bearing model for this variant.
+
+- **gemma4-e4b-mlx:** Tier 3 (revised) — above degeneracy threshold, but output length
+  is problem-dependent. Short-proof problems (Collatz, Goldbach): 100% structured. Long-proof
+  problems (Legendre): 100% token-exceeded. Response complexity tracks problem complexity
+  rather than saturating at max-output.
+
+### Max-tokens as a measurement parameter
+
+The fleet-collect-config-ren3-dual.json note says `max_tokens=2048` "prevents response
+truncation before closing fence." For Collatz and Goldbach this is correct. For Legendre,
+2048 tokens is insufficient for e4b's proof strategy.
+
+**Options for future Legendre/e4b collection:**
+
+1. **Increase max_tokens to 4096** for Legendre runs. This should capture a complete fence
+   close if the proof attempt is ~2x longer than Collatz. Risk: slower collection (2x output
+   per run on ren3 MLX).
+
+2. **Accept token-exceeded as a category** and add a fifth class to the classifier. The
+   incomplete Lean block is extractable (everything between ` ```lean ` and EOF) and could
+   be partially scored — but the infrastructure doesn't support this yet.
+
+3. **Lean truncation parser**: extract the partial block and classify whatever subgoals are
+   present. The first few subgoals in a truncated proof may still be well-formed.
+
+Option 1 is the cleanest path. Adding a new Legendre config with `max_tokens=4096`:
+`fleet-collect-config-legendre-deep.json`.
+
+### Collection status at beat 905
+
+- **twin-primes ren3-dual v1:** launched (PID 76561), in flight. Results next beat.
+- **Legendre/e4b with max_tokens=4096:** not yet launched (config not yet written).
+- **gemma4-e2b on Goldbach:** still missing; ren2 timeouts prevent CPU-path collection.
