@@ -9,14 +9,14 @@
     "novel_statements": [
       "N < p",
       "Nat.Prime (p + 2)",
-      "\u2203 p : \u2115, Nat.Prime p \u2227 Nat.Prime (p + 2)"
+      "∃ p : ℕ, Nat.Prime p ∧ Nat.Prime (p + 2)"
     ]
   },
   "entries": [
     {
       "model": "ren3/qwen3.5-9b-mlx",
       "subgoal_statements": [
-        "\u2203 p : \u2115, Nat.Prime p \u2227 Nat.Prime (p + 2)"
+        "∃ p : ℕ, Nat.Prime p ∧ Nat.Prime (p + 2)"
       ],
       "is_degenerate": false
     },
@@ -29,5 +29,6 @@
       "is_degenerate": false
     }
   ],
-  "errors": []
+  "errors": [],
+  "target_statement": "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)"
 }

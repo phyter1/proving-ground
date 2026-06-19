@@ -57,6 +57,22 @@ def load_runs(problem_id: str, runs_dir: Path) -> list[dict]:
 
 def _classify_entry(entry: dict, run_target: str | None) -> str:
     """Return 'degenerate', 'confusion', 'structured', or 'unknown'."""
+    if "is_degenerate" not in entry:
+        # Pre-classifier format (e.g. twin-primes v4/v5). No run_target → unknown.
+        if run_target is None:
+            return "unknown"
+        decomp = Decomposition(
+            target_id="",
+            target_statement=run_target,
+            subgoals=tuple(Subgoal(id=str(i), statement=sg) for i, sg in enumerate(entry.get("subgoals", []))),
+            root_implication_verified=False,
+            statement_matches_target=False,
+            axioms_clean=False,
+        )
+        from proving_ground.hardness import is_degenerate as _is_degenerate
+        if _is_degenerate(decomp):
+            return "degenerate"
+        return "confusion" if is_confusion_non_degenerate(decomp) else "structured"
     if entry["is_degenerate"]:
         return "degenerate"
     if "is_confusion" in entry:

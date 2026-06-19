@@ -28,5 +28,6 @@
       "model": "ren2/gemma4-e2b",
       "error": "Endpoint http://localhost:13434/v1/chat/completions response had empty message content."
     }
-  ]
+  ],
+  "target_statement": "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)"
 }
