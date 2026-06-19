@@ -255,6 +255,32 @@ the target (the added constraint narrows the existential claim without leverage)
 The Wilson CIs overlap substantially — 3 runs per model is insufficient for discrimination.
 CI width is ±25-35 percentage points even at k=3. Need k≥5 for tighter estimates.
 
+### Legendre v4 run (beat 899, ren1, 2026-06-19)
+
+Same config. gpt-oss-20b timed out again despite model being confirmed loaded on ren4.
+Output: `runs/collection-legendre-ren1-local-v4.json`.
+
+Results:
+- **ren3/qwen3.5-9b-mlx** → is_degenerate: **true**. 4th consecutive restatement.
+- **ren2/gemma4-e2b** → is_degenerate: **true**. Same unquantified conjunct as v2.
+- **ren4/gpt-oss-20b** → timeout error (model was loaded per `api/ps`, inference itself hit 300s limit).
+
+**gpt-oss inference timeout is intermittent** — succeeds with spurious-constraint output (v3) but
+times out in other runs (v1, v2, v4). Temperature=0 should produce deterministic outputs, but
+timing varies. The 300s client timeout may be insufficient for some inference runs at this model
+size. Not currently worth debugging — gpt-oss data is unreliable at this collection setup.
+
+**Rate picture after v1-v4 (k=4 for qwen3.5/gemma4, k=1 for gpt-oss):**
+
+| Model | N | Degenerate | Rate | 95% CI (Wilson) |
+|-------|---|-----------|------|-----------------|
+| qwen3.5-9b-mlx | 4 | 4 | 100% | [51%, 100%] |
+| gemma4-e2b | 4 | 3 | 75% | [30%, 95%] |
+| gpt-oss-20b | 1 | 0 | 0% | [0%, 79%] |
+
+The pattern stabilizes: qwen3.5 is robustly degenerate; gemma4 is borderline (true rate
+somewhere in [30%, 95%] at 95% confidence). v5 (in flight, beat 899) adds one more data point.
+
 **Critical observation:** The binary degeneracy comparison Legendre vs. Collatz goes in
 the *wrong direction* when counting rates naively. gemma4 is MORE degenerate on Legendre
 (67%) than Collatz (0%). But Collatz/gemma4's non-degenerate output is a trivial base case
@@ -334,6 +360,20 @@ gate criterion (2 named theorems in Mathlib or widely cited) is a cheap pre-filt
 "will this problem produce structured null vs. degenerate null?"
 
 The `literature_anchors` field is already in `benchmark-v1.json` for all open-tier problems.
-The next implementation step is adding the confusion-detection check to `is_degenerate`
-(or a separate `classify_output` function) so the rate script can produce three-way counts
-automatically rather than requiring manual review at scale.
+The `decomposability_prediction` metadata field is also present for all open-tier problems.
+
+**Next implementation steps (priority order):**
+
+1. **Confusion-detection check in hardness.py** — add `is_confusion_non_degenerate(decomp,
+   target)` that returns True when a non-degenerate subgoal contains the full target statement
+   as a substring or subformula. This catches the gpt-oss spurious-constraint pattern
+   (`target ∧ extra_condition`) automatically.
+
+2. **Structured-detection check** — add `is_structured(decomp, problem)` that checks
+   subgoals against `problem.literature_anchors` patterns. For Legendre: look for
+   existence-in-interval subgoal separate from primality subgoal (gemma4 v1 pattern).
+   Requires defining `decomposition_patterns` per problem or using syntactic analysis.
+
+3. **Three-way output from compute_rates.py** — once the classifier is implemented,
+   the rate script can produce degenerate/structured/confusion counts automatically,
+   removing the need for manual classification at scale.
