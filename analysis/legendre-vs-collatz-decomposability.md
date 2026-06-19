@@ -560,3 +560,125 @@ n=1 base case and comparable to Legendre's Bertrand + BHP anchors.
 If Goldbach gemma4 structured rate > Collatz structured rate (0%), that confirms the anchor-richness
 gradient: Collatz (no anchor) < Legendre (Bertrand) ≈ Goldbach (Chen/Vinogradov) < twin-primes
 (GPY/Maynard). A flat result (both 0%) would challenge the hypothesis.
+
+---
+
+## Model-variant confound and capability tiers (beat 904, 2026-06-19)
+
+### ren3-dual results: gemma4-e4b-mlx
+
+ren3-dual collection runs (v1-v3) completed for both Collatz and Goldbach. These used
+`ren3/gemma4-e4b-mlx` — the 4-bit quantized gemma4 running on ren3 MLX. This is a **different
+model variant** from the `ren2/gemma4-e2b` used in all prior Legendre/Collatz data.
+
+Three-way rates from compute_rates.py:
+
+**Collatz (all runs combined):**
+
+| Model | N | Deg | Conf | Struct | DegRate | 95% CI |
+|-------|---|-----|------|--------|---------|--------|
+| ren3/qwen3.5-9b-mlx | 7 | 7 | 0 | 0 | 100% | [65%, 100%] |
+| ren2/gemma4-e2b | 2 | 0 | 2 | 0 | 0% | [0%, 66%] |
+| ren3/gemma4-e4b-mlx | 3 | 0 | 0 | 3 | 0% | [0%, 56%] |
+| ren4/gpt-oss-20b | 1 | 0 | 1 | 0 | 0% | [0%, 79%] |
+
+**Goldbach (ren3-dual runs only):**
+
+| Model | N | Deg | Conf | Struct | DegRate | 95% CI |
+|-------|---|-----|------|--------|---------|--------|
+| ren3/qwen3.5-9b-mlx | 6 | 6 | 0 | 0 | 100% | [61%, 100%] |
+| ren3/gemma4-e4b-mlx | 3 | 0 | 0 | 3 | 0% | [0%, 56%] |
+
+**Result: gemma4-e4b-mlx is 3/3 structured on both Collatz AND Goldbach.** This contradicts
+the prediction from beat 903, which expected Goldbach structured rate > Collatz structured rate
+(testing the anchor-richness gradient). Instead, e4b produced structured output on both problems
+at the same rate (100%), including Collatz which has the sparsest anchors.
+
+### The model-variant confound
+
+The prior Collatz/gemma4 data (2/2 confusion) was `ren2/gemma4-e2b`. The new Collatz/gemma4
+data (3/3 structured) is `ren3/gemma4-e4b-mlx`. These look like the same model in casual
+reference but are genuinely different checkpoints with different quantization (2-bit vs. 4-bit).
+
+This means the beat 903 prediction was untestable with the ren3-dual config: the prediction
+was about gemma4-e2b's Goldbach behavior, but we ran gemma4-e4b instead. The timeout fix
+(switching from ren2 CPU to ren3 MLX) inadvertently switched model variants.
+
+The cross-problem comparison table from beat 903 mixes e2b and e4b data under the "gemma4"
+label. That conflation needs to be unwound.
+
+**Corrected cross-problem table, by model variant:**
+
+| Model | Problem | N | Deg | Conf | Struct |
+|-------|---------|---|-----|------|--------|
+| ren2/gemma4-e2b | Legendre | 4 | 3 | 0 | 1 |
+| ren2/gemma4-e2b | Collatz | 2 | 0 | 2 | 0 |
+| ren2/gemma4-e2b | Goldbach | 0 | — | — | — |
+| ren2/gemma4-e2b | Twin primes | 3 | 0 | 0 | 3 |
+| ren3/gemma4-e4b-mlx | Collatz | 3 | 0 | 0 | 3 |
+| ren3/gemma4-e4b-mlx | Goldbach | 3 | 0 | 0 | 3 |
+| ren3/gemma4-e4b-mlx | Legendre | 0 | — | — | — |
+| ren3/gemma4-e4b-mlx | Twin primes | 0 | — | — | — |
+
+### Capability tier model
+
+The data across qwen3.5 (7 Legendre + 7 Collatz + 6 Goldbach + twin primes) and the two
+gemma4 variants suggests a capability-tier structure:
+
+**Tier 1 — degenerate-anchored (qwen3.5-9b-mlx):**
+Always degenerate on Legendre (5/5), Collatz (7/7), Goldbach (6/6). The one exception is
+twin primes (40% degenerate, 3/5 structured) — the richest anchor set (GPY/Maynard 2013).
+Literature anchors have no observable effect until they're very strong.
+
+**Tier 2 — boundary-sensitive (gemma4-e2b):**
+Anchor richness determines output type. Collatz (sparse anchor: n=1 only) → confusion.
+Legendre (moderate: Bertrand + BHP) → 75% degenerate, 25% structured. Twin primes (rich:
+GPY, Maynard) → 0% degenerate, 100% structured. The anchor-richness gradient maps cleanly
+onto this model's behavior.
+
+**Tier 3 — above threshold (gemma4-e4b-mlx):**
+Consistently structured across Collatz AND Goldbach (N=6, 0% degenerate, 0% confusion,
+100% structured). Anchor richness doesn't determine output — the model produces structured
+decompositions regardless. Whether the decompositions are mathematically meaningful vs. novel
+noise is a separate quality question (see below).
+
+The anchor-richness hypothesis is **load-bearing for Tier 2 models** (boundary-sensitive)
+and **irrelevant for Tier 1 and Tier 3** (robustly below or above the decomposition boundary).
+This is a model capability characterization, not just an anchor characterization.
+
+### Quality of e4b structured outputs
+
+The classification system (degenerate/confusion/structured) measures structural novelty, not
+mathematical validity. Inspecting the e4b Collatz outputs:
+
+```
+subgoal 1: ∃ k' : ℕ, Function.iterate (...) k' n = 1   -- rephrased existential (novel but near-target)
+subgoal 2: ∀ k : ℕ, Function.iterate (...) k n ≥ 1    -- positivity invariant (false premise for proof)
+```
+
+The second subgoal is interesting: "every iterate is ≥ 1" is true but doesn't help prove
+convergence. It's a valid mathematical claim about the sequence, but it's not a useful
+decomposition step — showing all iterates are positive doesn't imply one of them equals 1.
+
+For Goldbach, e4b produced a named `lemma_3` (abstract lemma identifier rather than a
+stated subgoal). This counts as structured (non-degenerate, non-confusion) but is less
+inspectable than a concrete statement.
+
+**Implication:** Tier 3 models are "structurally above the benchmark's detection threshold"
+but may not be producing better mathematical reasoning than Tier 2. The benchmark currently
+can't discriminate structurally novel from mathematically useful. This will require a
+subsequent quality layer — either manual inspection or a theorem-verifier pass.
+
+### Next collection priorities
+
+1. **gemma4-e4b on Legendre and twin primes** (ren3-dual config): completes the e4b cross-
+   problem matrix. If e4b is also 100% structured on both, confirms it's robustly Tier 3.
+   If Legendre or twin primes shows degenerate/confusion, the tier characterization needs revision.
+
+2. **gemma4-e2b on Goldbach** (the original anchor-richness test): requires fixing the
+   ren2 timeout issue (or running e2b on ren3 if MLX supports both quantization levels).
+   This is the missing cell for testing the Tier 2 gradient prediction.
+
+3. **Twin primes k=3 with 2-model config** (ren1-2model or ren3-dual): establishes a clean
+   baseline with either e2b or e4b and qwen3.5 — the current twin primes data is mixed-config
+   old runs.
