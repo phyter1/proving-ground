@@ -77,9 +77,11 @@
     "references": ["https://en.wikipedia.org/wiki/Collatz_conjecture"],
     "preamble": "import Mathlib",
     "proved_after": null,
+    "literature_anchors": [],
     "metadata": {
       "note": "genuinely open; the 3n+1 problem. No finite verification suffices.",
-      "difficulty": "one of the most famous open problems in elementary number theory"
+      "difficulty": "one of the most famous open problems in elementary number theory",
+      "decomposability_prediction": "degenerate_null — no named partial result gives models a structural anchor; expect near-identical restatements across model families"
     }
   },
   {
@@ -91,9 +93,24 @@
     "references": ["https://en.wikipedia.org/wiki/Legendre%27s_conjecture"],
     "preamble": "import Mathlib",
     "proved_after": null,
+    "literature_anchors": [
+      {
+        "name": "Bertrand's Postulate",
+        "statement": "∀ n ≥ 1, ∃ p prime, n < p ≤ 2n",
+        "in_mathlib": true,
+        "relevance": "gives a prime in (n², 2n²); Legendre requires (n², (n+1)²) — the gap is a factor of ~n in interval width"
+      },
+      {
+        "name": "Baker-Harman-Pintz (2001)",
+        "statement": "for sufficiently large x, ∃ p prime in [x, x + x^0.525]",
+        "in_mathlib": false,
+        "relevance": "gives prime gap O(n^1.05) near n²; Legendre requires O(n); doesn't close the gap but provides a second decomposition trajectory"
+      }
+    ],
     "metadata": {
       "note": "genuinely open; there is always a prime between consecutive perfect squares",
-      "difficulty": "one of Landau's four problems (1912), still unresolved"
+      "difficulty": "one of Landau's four problems (1912), still unresolved",
+      "decomposability_prediction": "structured_null — Bertrand anchor enables multiple distinct decomposition strategies across model families; expect N_real ≥ 2, hardness ≠ null"
     }
   },
   {
@@ -105,7 +122,29 @@
     "references": ["https://en.wikipedia.org/wiki/Twin_prime"],
     "preamble": "import Mathlib",
     "proved_after": null,
-    "metadata": {"note": "genuinely open"}
+    "literature_anchors": [
+      {
+        "name": "Chen's Theorem (1973)",
+        "statement": "every sufficiently large even integer = prime + semiprime",
+        "in_mathlib": false,
+        "relevance": "closest result to twin primes; establishes the 6k±1 canonical form and sieve method applicability"
+      },
+      {
+        "name": "Goldston-Pintz-Yıldırım (2005)",
+        "statement": "liminf (p_{n+1} - p_n) / log p_n = 0",
+        "in_mathlib": false,
+        "relevance": "small gaps exist infinitely often; foundation for Maynard/Zhang bounded gaps"
+      },
+      {
+        "name": "Maynard (2013) / Zhang (2013)",
+        "statement": "liminf (p_{n+1} - p_n) < 246 (current best: 2)",
+        "in_mathlib": false,
+        "relevance": "bounded prime gaps proven; direct predecessor to twin prime conjecture"
+      }
+    ],
+    "metadata": {
+      "note": "genuinely open; confirmed structured_null in first run (Claude isolated {p | Prime p ∧ Prime (p+2)}.Infinite with real unboundedness structure)"
+    }
   },
   {
     "id": "goldbach",
@@ -116,6 +155,22 @@
     "references": ["https://en.wikipedia.org/wiki/Goldbach%27s_conjecture"],
     "preamble": "import Mathlib",
     "proved_after": null,
-    "metadata": {"note": "genuinely open"}
+    "literature_anchors": [
+      {
+        "name": "Chen's Theorem (1973)",
+        "statement": "every sufficiently large even integer = prime + semiprime (p2)",
+        "in_mathlib": false,
+        "relevance": "closest result to Goldbach; reduces the hard part to distinguishing prime from semiprime"
+      },
+      {
+        "name": "Vinogradov (1937)",
+        "statement": "every sufficiently large odd integer is the sum of three primes",
+        "in_mathlib": false,
+        "relevance": "odd Goldbach proven for large N; even Goldbach remains open"
+      }
+    ],
+    "metadata": {
+      "note": "genuinely open; first-run data shows Haiku padding (finite cases) inflates scalar — use artifact-first reporting for open tier"
+    }
   }
 ]
