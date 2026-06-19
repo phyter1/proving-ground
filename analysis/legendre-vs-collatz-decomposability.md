@@ -793,5 +793,129 @@ Option 1 is the cleanest path. Adding a new Legendre config with `max_tokens=409
 ### Collection status at beat 905
 
 - **twin-primes ren3-dual v1:** launched (PID 76561), in flight. Results next beat.
-- **Legendre/e4b with max_tokens=4096:** not yet launched (config not yet written).
+- **Legendre/e4b with max_tokens=4096:** config written (`fleet-collect-config-legendre-deep.json`).
 - **gemma4-e2b on Goldbach:** still missing; ren2 timeouts prevent CPU-path collection.
+
+---
+
+## Twin-primes ren3-dual results: trivial-tautology failure (beat 906, 2026-06-19)
+
+### Run results
+
+ren3-dual twin-primes k=3 (relaunched; PID 76561 from beat 905 did not persist). Results:
+
+```
+collection-twin-primes-ren3-dual-v1.json through v3.json
+```
+
+All three runs identical:
+- **ren3/gemma4-e4b-mlx** → subgoals: `["True"]`. is_degenerate: false. is_confusion: false.
+- **ren3/qwen3.5-9b-mlx** → subgoals: `["∃ p : ℕ, Nat.Prime p ∧ Nat.Prime (p + 2)"]`. is_degenerate: true.
+
+compute_rates three-way output:
+
+| Model | N | Deg | Conf | Struct | DegRate | 95% CI |
+|-------|---|-----|------|--------|---------|--------|
+| ren3/gemma4-e4b-mlx | 3 | 0 | 0 | 3 | 0% | [0%, 56%] |
+| ren3/qwen3.5-9b-mlx | 8 | 5 | 0 | 3 | 62% | [31%, 86%] |
+
+**Critical: the classifier calls e4b's outputs "structured" but they are `True`.** This is a
+misclassification. `True` as the sole subgoal is not a structured decomposition — it is
+a trivial tautology reduction. The three-way classifier does not catch this case.
+
+### Fifth behavior class: trivial-tautology
+
+| Class | Behavior | Example |
+|-------|----------|---------|
+| degenerate | Restates the conjecture | qwen3.5 on any open problem |
+| confusion | Spurious constraints or trivial base cases | gpt-oss `∧ p % 2 = 1`; gemma4 base-case pattern |
+| structured | Genuine subgoals within budget | gemma4-e4b on Collatz/Goldbach |
+| token-exceeded | Real proof attempt, exceeds budget before fence closes | gemma4-e4b on Legendre (2048 tok) |
+| **trivial-tautology** | All proof obligations collapse to `True` | gemma4-e4b on twin-primes (3/3 runs) |
+
+Trivial-tautology is consistent behavior: e4b produced `True` in all 3 independent twin-primes
+runs. Not noise — a stable model response to this problem.
+
+**Why `True`?** The most likely mechanism: e4b generates a Lean proof using a tactic
+that believes the statement follows from GPY/Maynard-class results in Mathlib, and the
+proof skeleton reduces remaining obligations to `True` (e.g., via `trivial` or `simp` on
+a subgoal the model considers trivially solvable). Alternatively: the model uses `decide`
+on a statement that evaluates to `True` in the decision procedure but doesn't actually
+prove the conjecture.
+
+Either mechanism reflects the same underlying failure: **e4b is overconfident on
+twin-primes**. The model "knows" GPY/Maynard and believes the problem is solved from
+those anchors, so it generates a proof that trivializes — collapsing to `True` rather than
+constructing a genuine proof sketch. This is the opposite of Legendre: there, the model
+recognizes the gap and generates an ambitious (too-long) proof. Here, the model doesn't
+recognize the remaining gap and closes the proof prematurely.
+
+### Anchor-richness U-curve hypothesis (gemma4-e4b-mlx)
+
+| Problem | Anchor richness | e4b behavior |
+|---------|-----------------|--------------|
+| Collatz | sparse (n=1 only) | structured (genuine subgoals, short) |
+| Goldbach | moderate (Chen, Vinogradov) | structured (genuine subgoals, short) |
+| Legendre | moderate-rich (Bertrand + BHP) | token-exceeded (ambitious, long) |
+| twin-primes | rich (GPY, Maynard 2013) | trivial-tautology (`True`) |
+
+This suggests an **anchor-richness U-curve** for Tier 3 models:
+- **Sparse anchors:** model produces genuine structured output (knows the problem is hard,
+  generates heuristic decompositions)
+- **Moderate anchors:** model produces ambitious structured output that may exceed budget
+- **Rich anchors:** model becomes overconfident, collapsing proof to `True` or equivalent
+
+The U-curve is the opposite of the Tier 2 gradient:
+- **Tier 2 (gemma4-e2b):** rich anchors → structured output (anchors enable good decomposition)
+- **Tier 3 (gemma4-e4b-mlx):** rich anchors → overconfident tautology (anchors cause premature closure)
+
+If confirmed, this has implications for corpus design: rich-anchor problems are the BEST
+problems for Tier 2 model evaluation and the WORST problems for Tier 3 model evaluation.
+The optimal corpus for a given model tier looks different.
+
+**Current evidence:** 3 data points (3 twin-primes runs, all `True`). Consistent, not a
+single outlier. Hypothesis generation, not confirmation. Needs:
+1. More problems at various anchor richness levels with e4b data
+2. Manual inspection of the actual Lean code e4b generates for twin-primes
+   (the JSON format strips raw responses; need to add raw output capture to the collector)
+
+### Capability tier model (updated)
+
+**qwen3.5-9b-mlx (Tier 1 — degenerate-anchored):**
+Legendre 8/8 degenerate, Collatz 7/7 degenerate, Goldbach 6/6 degenerate, twin-primes
+~62% degenerate (5/8) with some structured outputs. Exception for very rich anchors only.
+
+**gemma4-e2b (Tier 2 — boundary-sensitive):**
+Collatz 0/2 structured (confusion), Legendre 1/4 structured, twin-primes 3/3 structured.
+Anchor-richness gradient is load-bearing: richer anchors → higher structured rate.
+
+**gemma4-e4b-mlx (Tier 3 — above threshold, problem-sensitive):**
+- Collatz: 3/3 structured (genuine subgoals, budget OK)
+- Goldbach: 3/3 structured (genuine subgoals, budget OK)
+- Legendre: 0/3 structured, 3/3 token-exceeded (ambitious proof strategy, exceeds 2048 tok)
+- Twin primes: 0/3 structured, 3/3 trivial-tautology (`True` — overconfident closure)
+
+Tier 3 characterization update: above-threshold models are not uniformly better. They
+show problem-specific failure modes (token-exceeded, trivial-tautology) that Tier 2 models
+don't exhibit. The failure mode depends on the model's confidence in the anchor set:
+- Unrecognized problem (no anchor) → structured attempt
+- Recognized but unsolvable gap → ambitious token-exceeded
+- Recognized and "believed solved" → trivial-tautology collapse
+
+### Classifier gap: True-detection missing
+
+`is_degenerate` checks if all subgoals are echoes of the target.
+`is_confusion_non_degenerate` checks for spurious-conjunct and echo-containing patterns.
+Neither catches `True` as a sole subgoal.
+
+**Fix:** Add a `is_trivial_tautology(subgoals)` check: returns True if any subgoal is
+`True`, `trivial`, `⊤`, or `True.intro`. This is a narrow pattern but consistent with
+observed behavior. Implementation in hardness.py — next beat.
+
+### Collection status at beat 906
+
+- ✅ twin-primes ren3-dual v1-v3: complete
+- 🔲 Legendre/e4b deep (max_tokens=4096): not yet launched; to start this beat
+- 🔲 gemma4-e2b on Goldbach: still missing; ren2 timeouts prevent CPU-path collection
+- 🔲 Raw response capture: need to add to collector to inspect actual Lean code
+- 🔲 is_trivial_tautology classifier: add to hardness.py

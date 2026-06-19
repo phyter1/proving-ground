@@ -531,3 +531,41 @@ def test_alpha_equivalent_subgoals_reach_consensus():
     assert r.n_degenerate == 0
     assert r.consensus_score == pytest.approx(1.0)
     assert r.hardness_score == pytest.approx(0.0)
+
+
+# --- is_trivial_tautology ---------------------------------------------------
+
+from proving_ground.hardness import is_trivial_tautology
+
+TWIN_PRIMES = "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)"
+
+
+def test_trivial_tautology_true_subgoal():
+    # gemma4-e4b pattern on twin-primes: sole subgoal is "True"
+    d = _decomp("twin-primes", ["True"], target_statement=TWIN_PRIMES)
+    assert is_trivial_tautology(d) is True
+
+
+def test_trivial_tautology_top_subgoal():
+    # Lean 4 ⊤ syntax variant
+    d = _decomp("twin-primes", ["⊤"], target_statement=TWIN_PRIMES)
+    assert is_trivial_tautology(d) is True
+
+
+def test_trivial_tautology_not_degenerate():
+    # Degenerate (restatement) → is_trivial_tautology returns False
+    d = _decomp("twin-primes", [TWIN_PRIMES], target_statement=TWIN_PRIMES)
+    assert is_degenerate(d) is True
+    assert is_trivial_tautology(d) is False
+
+
+def test_trivial_tautology_genuine_subgoal_not_flagged():
+    # A non-tautology subgoal should not be flagged
+    d = _decomp("twin-primes", ["∃ p, N < p ∧ Nat.Prime p"], target_statement=TWIN_PRIMES)
+    assert is_trivial_tautology(d) is False
+
+
+def test_trivial_tautology_mixed_subgoals_not_flagged():
+    # If any subgoal is not a tautology, not flagged
+    d = _decomp("twin-primes", ["True", "∃ p, Nat.Prime p"], target_statement=TWIN_PRIMES)
+    assert is_trivial_tautology(d) is False

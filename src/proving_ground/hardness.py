@@ -215,6 +215,29 @@ def is_confusion_non_degenerate(decomp: Decomposition) -> bool:
     return False
 
 
+# Lean propositions that represent trivial tautologies — observed from gemma4-e4b-mlx
+# on twin-primes (3/3 runs): the model collapses the proof to `True`, which escapes
+# both is_degenerate (wrong vocabulary) and is_confusion (no target prefix).
+_TRIVIAL_TAUTOLOGY_STATEMENTS: frozenset[str] = frozenset({"True", "⊤", "trivial"})
+
+
+def is_trivial_tautology(decomp: Decomposition) -> bool:
+    """Return True when all subgoals are trivial tautologies (e.g. ``True``).
+
+    A decomposition that reduces the proof obligation to ``True`` or ``⊤`` is
+    mathematically vacuous — it claims the theorem needs no proof. This is a
+    distinct failure mode from degenerate (restatement) and confusion (spurious
+    constraints): the model believes the theorem is already solved.
+
+    Returns False for degenerate or empty decompositions.
+    """
+    if not decomp.subgoals or is_degenerate(decomp):
+        return False
+    return all(
+        sg.statement.strip() in _TRIVIAL_TAUTOLOGY_STATEMENTS for sg in decomp.subgoals
+    )
+
+
 def pairwise_jaccard(sets: Sequence[frozenset[str]]) -> float:
     """Mean pairwise Jaccard similarity across all pairs in *sets*.
 

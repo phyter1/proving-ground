@@ -1,0 +1,35 @@
+{
+  "problem_id": "twin-primes",
+  "target_statement": "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)",
+  "n_models": 2,
+  "n_degenerate": 1,
+  "n_errors": 0,
+  "consensus": {
+    "consensus_score": null,
+    "hardness_score": null,
+    "novel_statements": [
+      "True"
+    ]
+  },
+  "entries": [
+    {
+      "model": "ren3/gemma4-e4b-mlx",
+      "n_subgoals": 1,
+      "subgoals": [
+        "True"
+      ],
+      "is_degenerate": false,
+      "is_confusion": false
+    },
+    {
+      "model": "ren3/qwen3.5-9b-mlx",
+      "n_subgoals": 1,
+      "subgoals": [
+        "∃ p : ℕ, Nat.Prime p ∧ Nat.Prime (p + 2)"
+      ],
+      "is_degenerate": true,
+      "is_confusion": false
+    }
+  ],
+  "errors": []
+}

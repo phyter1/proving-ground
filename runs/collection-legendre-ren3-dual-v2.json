@@ -1,0 +1,29 @@
+{
+  "problem_id": "legendre",
+  "target_statement": "∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p",
+  "n_models": 2,
+  "n_degenerate": 1,
+  "n_errors": 1,
+  "consensus": {
+    "consensus_score": null,
+    "hardness_score": null,
+    "novel_statements": []
+  },
+  "entries": [
+    {
+      "model": "ren3/qwen3.5-9b-mlx",
+      "n_subgoals": 1,
+      "subgoals": [
+        "∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p"
+      ],
+      "is_degenerate": true,
+      "is_confusion": false
+    }
+  ],
+  "errors": [
+    {
+      "model": "ren3/gemma4-e4b-mlx",
+      "error": "No fenced code blocks found in model response.\n--- response (truncated) ---\n```lean\nimport Mathlib\n\n-- Target statement: For any natural number n > 0, there exists a prime number p such that n^2 < p < (n+1)^2.\n-- This is Bertrand's Postulate applied to the interval (n^2, (n+1)^2), which is a weaker form of Legendre's Conjecture (which usually concerns primes between n and 2n).\n-- The statement given is equivalent to saying there is always a prime between n^2 and (n+1)^2.\n\n-- We need to prove: ∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p\n\n-- Lemma …"
+    }
+  ]
+}

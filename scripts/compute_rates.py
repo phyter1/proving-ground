@@ -26,7 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from proving_ground.hardness import is_confusion_non_degenerate
+from proving_ground.hardness import is_confusion_non_degenerate, is_trivial_tautology
 from proving_ground.models import Decomposition, Subgoal
 
 
@@ -56,43 +56,47 @@ def load_runs(problem_id: str, runs_dir: Path) -> list[dict]:
 
 
 def _classify_entry(entry: dict, run_target: str | None) -> str:
-    """Return 'degenerate', 'confusion', 'structured', or 'unknown'."""
-    if "is_degenerate" not in entry:
-        # Pre-classifier format (e.g. twin-primes v4/v5). No run_target → unknown.
-        if run_target is None:
-            return "unknown"
-        decomp = Decomposition(
+    """Return 'degenerate', 'confusion', 'tautology', 'structured', or 'unknown'."""
+    from proving_ground.hardness import is_degenerate as _is_degenerate
+
+    def _make_decomp(target: str) -> Decomposition:
+        return Decomposition(
             target_id="",
-            target_statement=run_target,
+            target_statement=target,
             subgoals=tuple(Subgoal(id=str(i), statement=sg) for i, sg in enumerate(entry.get("subgoals", []))),
             root_implication_verified=False,
             statement_matches_target=False,
             axioms_clean=False,
         )
-        from proving_ground.hardness import is_degenerate as _is_degenerate
+
+    if "is_degenerate" not in entry:
+        # Pre-classifier format. No run_target → unknown.
+        if run_target is None:
+            return "unknown"
+        decomp = _make_decomp(run_target)
         if _is_degenerate(decomp):
             return "degenerate"
+        if is_trivial_tautology(decomp):
+            return "tautology"
         return "confusion" if is_confusion_non_degenerate(decomp) else "structured"
     if entry["is_degenerate"]:
         return "degenerate"
+    # For post-classifier runs: always recompute tautology from subgoal strings,
+    # since it wasn't written to disk in older run files.
+    if run_target is not None:
+        decomp = _make_decomp(run_target)
+        if is_trivial_tautology(decomp):
+            return "tautology"
     if "is_confusion" in entry:
         return "confusion" if entry["is_confusion"] else "structured"
     if run_target is not None:
-        # Reconstruct a minimal Decomposition to use the authoritative classifier.
-        decomp = Decomposition(
-            target_id="",
-            target_statement=run_target,
-            subgoals=tuple(Subgoal(id=str(i), statement=sg) for i, sg in enumerate(entry.get("subgoals", []))),
-            root_implication_verified=False,
-            statement_matches_target=False,
-            axioms_clean=False,
-        )
+        decomp = _make_decomp(run_target)
         return "confusion" if is_confusion_non_degenerate(decomp) else "structured"
     return "unknown"
 
 
 def compute_model_rates(runs: list[dict]) -> dict[str, dict]:
-    """Return per-model stats with three-way classification."""
+    """Return per-model stats with four-way classification."""
     stats: dict[str, dict] = {}
     for run in runs:
         run_target = run.get("target_statement")
@@ -103,6 +107,7 @@ def compute_model_rates(runs: list[dict]) -> dict[str, dict]:
                     "attempts": 0,
                     "degenerate": 0,
                     "confusion": 0,
+                    "tautology": 0,
                     "structured": 0,
                     "unknown_nondegen": 0,
                 }
@@ -112,6 +117,8 @@ def compute_model_rates(runs: list[dict]) -> dict[str, dict]:
                 stats[model]["degenerate"] += 1
             elif label == "confusion":
                 stats[model]["confusion"] += 1
+            elif label == "tautology":
+                stats[model]["tautology"] += 1
             elif label == "structured":
                 stats[model]["structured"] += 1
             else:
@@ -123,13 +130,14 @@ def compute_model_rates(runs: list[dict]) -> dict[str, dict]:
                     "attempts": 0,
                     "degenerate": 0,
                     "confusion": 0,
+                    "tautology": 0,
                     "structured": 0,
                     "unknown_nondegen": 0,
                 }
     for model, s in stats.items():
         n = s["attempts"]
         s["degeneracy_rate"] = s["degenerate"] / n if n > 0 else None
-        non_degen = s["confusion"] + s["structured"] + s["unknown_nondegen"]
+        non_degen = s["confusion"] + s["tautology"] + s["structured"] + s["unknown_nondegen"]
         s["non_degenerate"] = non_degen
         s["non_degenerate_rate"] = non_degen / n if n > 0 else None
         s["structured_rate"] = s["structured"] / n if n > 0 else None
@@ -144,8 +152,8 @@ def print_rates(problem_id: str, runs: list[dict], stats: dict[str, dict], three
     print(f"Files: {', '.join(files)}")
     print(f"{'='*70}")
     if three_way:
-        print(f"{'Model':<30} {'N':>4} {'Deg':>5} {'Conf':>5} {'Struct':>7} {'Unknown':>8} {'DegRate':>8} {'95% CI':>14}")
-        print(f"{'-'*30} {'-'*4} {'-'*5} {'-'*5} {'-'*7} {'-'*8} {'-'*8} {'-'*14}")
+        print(f"{'Model':<30} {'N':>4} {'Deg':>5} {'Conf':>5} {'Taut':>5} {'Struct':>7} {'Unk':>4} {'DegRate':>8} {'95% CI':>14}")
+        print(f"{'-'*30} {'-'*4} {'-'*5} {'-'*5} {'-'*5} {'-'*7} {'-'*4} {'-'*8} {'-'*14}")
         for model, s in sorted(stats.items()):
             n = s["attempts"]
             deg_rate = f"{s['degeneracy_rate']:.0%}" if s['degeneracy_rate'] is not None else "N/A"
@@ -156,7 +164,7 @@ def print_rates(problem_id: str, runs: list[dict], stats: dict[str, dict], three
                 ci = "N/A"
             print(
                 f"{model:<30} {n:>4} {s['degenerate']:>5} {s['confusion']:>5}"
-                f" {s['structured']:>7} {s['unknown_nondegen']:>8} {deg_rate:>8} {ci:>14}"
+                f" {s.get('tautology', 0):>5} {s['structured']:>7} {s['unknown_nondegen']:>4} {deg_rate:>8} {ci:>14}"
             )
     else:
         print(f"{'Model':<30} {'N':>4} {'Degen':>6} {'Rate':>6} {'95% CI':>15} {'Non-deg':>8} {'NDRate':>7}")
