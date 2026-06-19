@@ -8,7 +8,9 @@
     "references": [],
     "preamble": "import Mathlib",
     "proved_after": null,
-    "metadata": {"note": "calibration"}
+    "metadata": {
+      "note": "calibration"
+    }
   },
   {
     "id": "calib-mul-identities",
@@ -19,7 +21,9 @@
     "references": [],
     "preamble": "import Mathlib",
     "proved_after": null,
-    "metadata": {"note": "calibration"}
+    "metadata": {
+      "note": "calibration"
+    }
   },
   {
     "id": "tractable-consecutive",
@@ -30,7 +34,9 @@
     "references": [],
     "preamble": "import Mathlib",
     "proved_after": null,
-    "metadata": {"note": "two lemmas of differing difficulty"}
+    "metadata": {
+      "note": "two lemmas of differing difficulty"
+    }
   },
   {
     "id": "tractable-even-or-odd",
@@ -41,7 +47,9 @@
     "references": [],
     "preamble": "import Mathlib",
     "proved_after": null,
-    "metadata": {"note": "needs the right mathlib lemma"}
+    "metadata": {
+      "note": "needs the right mathlib lemma"
+    }
   },
   {
     "id": "tractable-even-product",
@@ -52,7 +60,9 @@
     "references": [],
     "preamble": "import Mathlib",
     "proved_after": null,
-    "metadata": {"note": "differentiator: needs case analysis or a mathlib lemma"}
+    "metadata": {
+      "note": "differentiator: needs case analysis or a mathlib lemma"
+    }
   },
   {
     "id": "tractable-prime-gaps",
@@ -60,7 +70,9 @@
     "tier": "weakly_open",
     "source": "proving-ground/benchmark-v1",
     "title": "Arbitrarily large prime gaps",
-    "references": ["https://en.wikipedia.org/wiki/Prime_gap"],
+    "references": [
+      "https://en.wikipedia.org/wiki/Prime_gap"
+    ],
     "preamble": "import Mathlib",
     "proved_after": null,
     "metadata": {
@@ -74,7 +86,9 @@
     "tier": "open",
     "source": "proving-ground/benchmark-v1",
     "title": "Collatz Conjecture",
-    "references": ["https://en.wikipedia.org/wiki/Collatz_conjecture"],
+    "references": [
+      "https://en.wikipedia.org/wiki/Collatz_conjecture"
+    ],
     "preamble": "import Mathlib",
     "proved_after": null,
     "literature_anchors": [],
@@ -90,7 +104,9 @@
     "tier": "open",
     "source": "proving-ground/benchmark-v1",
     "title": "Legendre's Conjecture",
-    "references": ["https://en.wikipedia.org/wiki/Legendre%27s_conjecture"],
+    "references": [
+      "https://en.wikipedia.org/wiki/Legendre%27s_conjecture"
+    ],
     "preamble": "import Mathlib",
     "proved_after": null,
     "literature_anchors": [
@@ -119,7 +135,9 @@
     "tier": "open",
     "source": "proving-ground/benchmark-v1",
     "title": "Twin Prime Conjecture",
-    "references": ["https://en.wikipedia.org/wiki/Twin_prime"],
+    "references": [
+      "https://en.wikipedia.org/wiki/Twin_prime"
+    ],
     "preamble": "import Mathlib",
     "proved_after": null,
     "literature_anchors": [
@@ -143,7 +161,8 @@
       }
     ],
     "metadata": {
-      "note": "genuinely open; confirmed structured_null in first run (Claude isolated {p | Prime p ∧ Prime (p+2)}.Infinite with real unboundedness structure)"
+      "note": "genuinely open; confirmed structured_null in first run (Claude isolated {p | Prime p ∧ Prime (p+2)}.Infinite with real unboundedness structure)",
+      "decomposability_prediction": "structured_null — richest anchor set of the open tier (Chen/GPY/Maynard progression); expect 3+ distinct decomposition strategies: (1) Chen sieve path: p + p2, arguing why semiprime→twin requires closing a single gap; (2) GPY/Zhang path: bounded gaps proven for gap=246, 'squeezing' argument toward gap=2; (3) k-tuple/Maynard path: dense prime constellations establish frequency; all fail at same step but via different routes. First-run data confirmed N_real ≥ 2 (Claude produced genuine unboundedness structure, not bare restatement). Highest expected N_real of all open-tier problems."
     }
   },
   {
@@ -152,7 +171,9 @@
     "tier": "open",
     "source": "proving-ground/benchmark-v1",
     "title": "Goldbach's Conjecture",
-    "references": ["https://en.wikipedia.org/wiki/Goldbach%27s_conjecture"],
+    "references": [
+      "https://en.wikipedia.org/wiki/Goldbach%27s_conjecture"
+    ],
     "preamble": "import Mathlib",
     "proved_after": null,
     "literature_anchors": [
@@ -170,7 +191,8 @@
       }
     ],
     "metadata": {
-      "note": "genuinely open; first-run data shows Haiku padding (finite cases) inflates scalar — use artifact-first reporting for open tier"
+      "note": "genuinely open; first-run data shows Haiku padding (finite cases) inflates scalar — use artifact-first reporting for open tier",
+      "decomposability_prediction": "structured_null — two distinct anchor trajectories; expect 2 decomposition strategies: (1) Chen path: every large even = p + p2 (semiprime); final gap is semiprime→prime (single Goldbach gap); (2) Vinogradov path: odd Goldbach closed for large N via circle method; even case framed as reduction; both paths fail at the same open step but arrive differently. N_real likely 2 (Chen path + Vinogradov path); slightly less rich than twin-primes which has 3 distinct trajectories. Chen's theorem is the canonical partial result — models that anchor here have the strongest gradient."
     }
   }
 ]
