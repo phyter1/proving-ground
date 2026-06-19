@@ -281,6 +281,39 @@ size. Not currently worth debugging — gpt-oss data is unreliable at this colle
 The pattern stabilizes: qwen3.5 is robustly degenerate; gemma4 is borderline (true rate
 somewhere in [30%, 95%] at 95% confidence). v5 (in flight, beat 899) adds one more data point.
 
+### Legendre v5 run (beat 901, ren1, 2026-06-19)
+
+ren2/gemma4-e2b and ren4/gpt-oss-20b both timed out. Only qwen3.5 completed.
+
+Results:
+- **ren3/qwen3.5-9b-mlx** → is_degenerate: **true**. 5th consecutive restatement of target.
+- **ren2/gemma4-e2b** → timeout error.
+- **ren4/gpt-oss-20b** → timeout error.
+
+v5 adds only one data point (qwen3.5). ren2 and ren4 may have been under load from parallel
+calibration runs started this beat.
+
+**Final k=5 Legendre rate table (three-way classifier):**
+
+| Model | N | Deg | Conf | Struct | DegRate | 95% CI (Wilson) |
+|-------|---|-----|------|--------|---------|-----------------|
+| ren3/qwen3.5-9b-mlx | 5 | 5 | 0 | 0 | 100% | [57%, 100%] |
+| ren2/gemma4-e2b | 4 | 3 | 0 | 1 | 75% | [30%, 95%] |
+| ren4/gpt-oss-20b | 1 | 0 | 1 | 0 | 0% | [0%, 79%] |
+
+**gpt-oss is excluded from further Legendre analysis.** Intermittent timeouts make its data
+unreliable at this collection config. The one confirmed run produced confusion-driven output
+(spurious `∧ p % 2 = 1` conjunct).
+
+**Gemma4 conclusion:** With N=4 and degeneracy rate 75% [30%, 95%], gemma4 is near the
+Legendre boundary but the CI is too wide to be definitive. A true rate of 30% or 95% are
+both consistent with the data. The one structured output (v1) is real signal — the
+existence-in-interval + primality split is mathematically correct decomposition direction
+— but not stable enough to call.
+
+**Qwen3.5 conclusion:** Robustly degenerate across all 5 Legendre runs. Always produces
+the full restatement. Literature anchors have no observable effect at this model size/quality.
+
 **Critical observation:** The binary degeneracy comparison Legendre vs. Collatz goes in
 the *wrong direction* when counting rates naively. gemma4 is MORE degenerate on Legendre
 (67%) than Collatz (0%). But Collatz/gemma4's non-degenerate output is a trivial base case
