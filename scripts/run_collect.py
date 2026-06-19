@@ -41,6 +41,7 @@ def load_problem(corpus_path: str, problem_id: str) -> Problem:
                 references=tuple(item.get("references", [])),
                 proved_after=item.get("proved_after"),
                 metadata=item.get("metadata", {}),
+                required_predicates=tuple(item.get("required_predicates", [])),
             )
     raise KeyError(f"Problem {problem_id!r} not found in {corpus_path}")
 
@@ -100,6 +101,7 @@ def _run_once(problem: Problem, runners: list[OpenAICompatibleRunner], out_path:
                 else None
             ),
             "n_canonical_match": result.consensus.n_canonical_match if result.consensus else None,
+            "n_key_term_absent": result.consensus.n_key_term_absent if result.consensus else None,
         } if result.consensus else None,
         "entries": [
             {

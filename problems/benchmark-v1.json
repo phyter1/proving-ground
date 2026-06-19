@@ -1,209 +1,228 @@
 [
-  {
-    "id": "calib-add-identities",
-    "statement": "∀ n : ℕ, n + 0 = n ∧ 0 + n = n",
-    "tier": "solved_recent",
-    "decomposition_type": "conjunction",
-    "source": "proving-ground/benchmark-v1",
-    "title": "Additive identities",
-    "references": [],
-    "preamble": "import Mathlib",
-    "proved_after": null,
-    "metadata": {
-      "note": "calibration"
+    {
+        "id": "calib-add-identities",
+        "statement": "∀ n : ℕ, n + 0 = n ∧ 0 + n = n",
+        "tier": "solved_recent",
+        "decomposition_type": "conjunction",
+        "source": "proving-ground/benchmark-v1",
+        "title": "Additive identities",
+        "references": [],
+        "preamble": "import Mathlib",
+        "proved_after": null,
+        "metadata": {
+            "note": "calibration"
+        }
+    },
+    {
+        "id": "calib-mul-identities",
+        "statement": "∀ n : ℕ, n * 1 = n ∧ 1 * n = n",
+        "tier": "solved_recent",
+        "decomposition_type": "conjunction",
+        "source": "proving-ground/benchmark-v1",
+        "title": "Multiplicative identities",
+        "references": [],
+        "preamble": "import Mathlib",
+        "proved_after": null,
+        "metadata": {
+            "note": "calibration"
+        }
+    },
+    {
+        "id": "tractable-consecutive",
+        "statement": "∀ n : ℕ, n ≤ n + 1 ∧ 2 ∣ n * (n + 1)",
+        "tier": "weakly_open",
+        "decomposition_type": "conjunction",
+        "source": "proving-ground/benchmark-v1",
+        "title": "Order + parity of consecutive integers",
+        "references": [],
+        "preamble": "import Mathlib",
+        "proved_after": null,
+        "metadata": {
+            "note": "two lemmas of differing difficulty"
+        }
+    },
+    {
+        "id": "tractable-even-or-odd",
+        "statement": "∀ n : ℕ, Even n ∨ Odd n",
+        "tier": "weakly_open",
+        "decomposition_type": "disjunction",
+        "source": "proving-ground/benchmark-v1",
+        "title": "Every natural is even or odd",
+        "references": [],
+        "preamble": "import Mathlib",
+        "proved_after": null,
+        "metadata": {
+            "note": "needs the right mathlib lemma"
+        },
+        "required_predicates": [
+            "Even",
+            "Odd"
+        ]
+    },
+    {
+        "id": "tractable-even-product",
+        "statement": "∀ n : ℕ, Even (n * (n + 1))",
+        "tier": "weakly_open",
+        "decomposition_type": "universal-predicate",
+        "source": "proving-ground/benchmark-v1",
+        "title": "Product of consecutive integers is even",
+        "references": [],
+        "preamble": "import Mathlib",
+        "proved_after": null,
+        "metadata": {
+            "note": "differentiator: needs case analysis or a mathlib lemma"
+        },
+        "required_predicates": [
+            "Even"
+        ]
+    },
+    {
+        "id": "tractable-prime-gaps",
+        "statement": "∀ k : ℕ, ∃ n : ℕ, ∀ j : ℕ, 1 ≤ j → j ≤ k → ¬Nat.Prime (n + j)",
+        "tier": "weakly_open",
+        "decomposition_type": "existential",
+        "source": "proving-ground/benchmark-v1",
+        "title": "Arbitrarily large prime gaps",
+        "references": [
+            "https://en.wikipedia.org/wiki/Prime_gap"
+        ],
+        "preamble": "import Mathlib",
+        "proved_after": null,
+        "metadata": {
+            "note": "elementary witness: n = (k+1)! + 1, then n+j = (k+1)!+j+1 is divisible by j+1 for 1 ≤ j ≤ k. Likely formalizable but non-trivial.",
+            "hint": "witness n = Nat.factorial (k + 1) + 1; show (k+1)! + j + 1 ∣ (k+1)! + j + 1 using dvd_add and Nat.factorial_dvd_factorial"
+        },
+        "required_predicates": [
+            "Nat.Prime"
+        ]
+    },
+    {
+        "id": "collatz",
+        "statement": "∀ n : ℕ, 0 < n → ∃ k : ℕ, Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k n = 1",
+        "tier": "open",
+        "decomposition_type": "existential",
+        "source": "proving-ground/benchmark-v1",
+        "title": "Collatz Conjecture",
+        "references": [
+            "https://en.wikipedia.org/wiki/Collatz_conjecture"
+        ],
+        "preamble": "import Mathlib",
+        "proved_after": null,
+        "literature_anchors": [],
+        "metadata": {
+            "note": "genuinely open; the 3n+1 problem. No finite verification suffices.",
+            "difficulty": "one of the most famous open problems in elementary number theory",
+            "decomposability_prediction": "degenerate_null — no named partial result gives models a structural anchor; expect near-identical restatements across model families"
+        }
+    },
+    {
+        "id": "legendre",
+        "statement": "∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p",
+        "tier": "open",
+        "decomposition_type": "existential",
+        "source": "proving-ground/benchmark-v1",
+        "title": "Legendre's Conjecture",
+        "references": [
+            "https://en.wikipedia.org/wiki/Legendre%27s_conjecture"
+        ],
+        "preamble": "import Mathlib",
+        "proved_after": null,
+        "literature_anchors": [
+            {
+                "name": "Bertrand's Postulate",
+                "statement": "∀ n ≥ 1, ∃ p prime, n < p ≤ 2n",
+                "in_mathlib": true,
+                "relevance": "gives a prime in (n², 2n²); Legendre requires (n², (n+1)²) — the gap is a factor of ~n in interval width"
+            },
+            {
+                "name": "Baker-Harman-Pintz (2001)",
+                "statement": "for sufficiently large x, ∃ p prime in [x, x + x^0.525]",
+                "in_mathlib": false,
+                "relevance": "gives prime gap O(n^1.05) near n²; Legendre requires O(n); doesn't close the gap but provides a second decomposition trajectory"
+            }
+        ],
+        "metadata": {
+            "note": "genuinely open; there is always a prime between consecutive perfect squares",
+            "difficulty": "one of Landau's four problems (1912), still unresolved",
+            "decomposability_prediction": "structured_null — Bertrand anchor enables multiple distinct decomposition strategies across model families; expect N_real ≥ 2, hardness ≠ null",
+            "decomposition_note": "∧ appears inside the ∃ scope (the witness conditions), not at the outer quantifier level — models decompose via the ∃-structure (Bertrand anchor), not by splitting conjunction"
+        },
+        "required_predicates": [
+            "Nat.Prime"
+        ]
+    },
+    {
+        "id": "twin-primes",
+        "statement": "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)",
+        "tier": "open",
+        "decomposition_type": "existential",
+        "source": "proving-ground/benchmark-v1",
+        "title": "Twin Prime Conjecture",
+        "references": [
+            "https://en.wikipedia.org/wiki/Twin_prime"
+        ],
+        "preamble": "import Mathlib",
+        "proved_after": null,
+        "literature_anchors": [
+            {
+                "name": "Chen's Theorem (1973)",
+                "statement": "every sufficiently large even integer = prime + semiprime",
+                "in_mathlib": false,
+                "relevance": "closest result to twin primes; establishes the 6k±1 canonical form and sieve method applicability"
+            },
+            {
+                "name": "Goldston-Pintz-Yıldırım (2005)",
+                "statement": "liminf (p_{n+1} - p_n) / log p_n = 0",
+                "in_mathlib": false,
+                "relevance": "small gaps exist infinitely often; foundation for Maynard/Zhang bounded gaps"
+            },
+            {
+                "name": "Maynard (2013) / Zhang (2013)",
+                "statement": "liminf (p_{n+1} - p_n) < 246 (current best: 2)",
+                "in_mathlib": false,
+                "relevance": "bounded prime gaps proven; direct predecessor to twin prime conjecture"
+            }
+        ],
+        "metadata": {
+            "note": "genuinely open; confirmed structured_null in first run (Claude isolated {p | Prime p ∧ Prime (p+2)}.Infinite with real unboundedness structure)",
+            "decomposability_prediction": "structured_null — richest anchor set of the open tier (Chen/GPY/Maynard progression); expect 3+ distinct decomposition strategies: (1) Chen sieve path: p + p2, arguing why semiprime→twin requires closing a single gap; (2) GPY/Zhang path: bounded gaps proven for gap=246, 'squeezing' argument toward gap=2; (3) k-tuple/Maynard path: dense prime constellations establish frequency; all fail at same step but via different routes. First-run data confirmed N_real ≥ 2 (Claude produced genuine unboundedness structure, not bare restatement). Highest expected N_real of all open-tier problems."
+        },
+        "required_predicates": [
+            "Nat.Prime"
+        ]
+    },
+    {
+        "id": "goldbach",
+        "statement": "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n",
+        "tier": "open",
+        "decomposition_type": "existential",
+        "source": "proving-ground/benchmark-v1",
+        "title": "Goldbach's Conjecture",
+        "references": [
+            "https://en.wikipedia.org/wiki/Goldbach%27s_conjecture"
+        ],
+        "preamble": "import Mathlib",
+        "proved_after": null,
+        "literature_anchors": [
+            {
+                "name": "Chen's Theorem (1973)",
+                "statement": "every sufficiently large even integer = prime + semiprime (p2)",
+                "in_mathlib": false,
+                "relevance": "closest result to Goldbach; reduces the hard part to distinguishing prime from semiprime"
+            },
+            {
+                "name": "Vinogradov (1937)",
+                "statement": "every sufficiently large odd integer is the sum of three primes",
+                "in_mathlib": false,
+                "relevance": "odd Goldbach proven for large N; even Goldbach remains open"
+            }
+        ],
+        "metadata": {
+            "note": "genuinely open; first-run data shows Haiku padding (finite cases) inflates scalar — use artifact-first reporting for open tier",
+            "decomposability_prediction": "structured_null — two distinct anchor trajectories; expect 2 decomposition strategies: (1) Chen path: every large even = p + p2 (semiprime); final gap is semiprime→prime (single Goldbach gap); (2) Vinogradov path: odd Goldbach closed for large N via circle method; even case framed as reduction; both paths fail at the same open step but arrive differently. N_real likely 2 (Chen path + Vinogradov path); slightly less rich than twin-primes which has 3 distinct trajectories. Chen's theorem is the canonical partial result — models that anchor here have the strongest gradient."
+        },
+        "required_predicates": [
+            "Nat.Prime"
+        ]
     }
-  },
-  {
-    "id": "calib-mul-identities",
-    "statement": "∀ n : ℕ, n * 1 = n ∧ 1 * n = n",
-    "tier": "solved_recent",
-    "decomposition_type": "conjunction",
-    "source": "proving-ground/benchmark-v1",
-    "title": "Multiplicative identities",
-    "references": [],
-    "preamble": "import Mathlib",
-    "proved_after": null,
-    "metadata": {
-      "note": "calibration"
-    }
-  },
-  {
-    "id": "tractable-consecutive",
-    "statement": "∀ n : ℕ, n ≤ n + 1 ∧ 2 ∣ n * (n + 1)",
-    "tier": "weakly_open",
-    "decomposition_type": "conjunction",
-    "source": "proving-ground/benchmark-v1",
-    "title": "Order + parity of consecutive integers",
-    "references": [],
-    "preamble": "import Mathlib",
-    "proved_after": null,
-    "metadata": {
-      "note": "two lemmas of differing difficulty"
-    }
-  },
-  {
-    "id": "tractable-even-or-odd",
-    "statement": "∀ n : ℕ, Even n ∨ Odd n",
-    "tier": "weakly_open",
-    "decomposition_type": "disjunction",
-    "source": "proving-ground/benchmark-v1",
-    "title": "Every natural is even or odd",
-    "references": [],
-    "preamble": "import Mathlib",
-    "proved_after": null,
-    "metadata": {
-      "note": "needs the right mathlib lemma"
-    }
-  },
-  {
-    "id": "tractable-even-product",
-    "statement": "∀ n : ℕ, Even (n * (n + 1))",
-    "tier": "weakly_open",
-    "decomposition_type": "universal-predicate",
-    "source": "proving-ground/benchmark-v1",
-    "title": "Product of consecutive integers is even",
-    "references": [],
-    "preamble": "import Mathlib",
-    "proved_after": null,
-    "metadata": {
-      "note": "differentiator: needs case analysis or a mathlib lemma"
-    }
-  },
-  {
-    "id": "tractable-prime-gaps",
-    "statement": "∀ k : ℕ, ∃ n : ℕ, ∀ j : ℕ, 1 ≤ j → j ≤ k → ¬Nat.Prime (n + j)",
-    "tier": "weakly_open",
-    "decomposition_type": "existential",
-    "source": "proving-ground/benchmark-v1",
-    "title": "Arbitrarily large prime gaps",
-    "references": [
-      "https://en.wikipedia.org/wiki/Prime_gap"
-    ],
-    "preamble": "import Mathlib",
-    "proved_after": null,
-    "metadata": {
-      "note": "elementary witness: n = (k+1)! + 1, then n+j = (k+1)!+j+1 is divisible by j+1 for 1 ≤ j ≤ k. Likely formalizable but non-trivial.",
-      "hint": "witness n = Nat.factorial (k + 1) + 1; show (k+1)! + j + 1 ∣ (k+1)! + j + 1 using dvd_add and Nat.factorial_dvd_factorial"
-    }
-  },
-  {
-    "id": "collatz",
-    "statement": "∀ n : ℕ, 0 < n → ∃ k : ℕ, Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k n = 1",
-    "tier": "open",
-    "decomposition_type": "existential",
-    "source": "proving-ground/benchmark-v1",
-    "title": "Collatz Conjecture",
-    "references": [
-      "https://en.wikipedia.org/wiki/Collatz_conjecture"
-    ],
-    "preamble": "import Mathlib",
-    "proved_after": null,
-    "literature_anchors": [],
-    "metadata": {
-      "note": "genuinely open; the 3n+1 problem. No finite verification suffices.",
-      "difficulty": "one of the most famous open problems in elementary number theory",
-      "decomposability_prediction": "degenerate_null — no named partial result gives models a structural anchor; expect near-identical restatements across model families"
-    }
-  },
-  {
-    "id": "legendre",
-    "statement": "∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p",
-    "tier": "open",
-    "decomposition_type": "existential",
-    "source": "proving-ground/benchmark-v1",
-    "title": "Legendre's Conjecture",
-    "references": [
-      "https://en.wikipedia.org/wiki/Legendre%27s_conjecture"
-    ],
-    "preamble": "import Mathlib",
-    "proved_after": null,
-    "literature_anchors": [
-      {
-        "name": "Bertrand's Postulate",
-        "statement": "∀ n ≥ 1, ∃ p prime, n < p ≤ 2n",
-        "in_mathlib": true,
-        "relevance": "gives a prime in (n², 2n²); Legendre requires (n², (n+1)²) — the gap is a factor of ~n in interval width"
-      },
-      {
-        "name": "Baker-Harman-Pintz (2001)",
-        "statement": "for sufficiently large x, ∃ p prime in [x, x + x^0.525]",
-        "in_mathlib": false,
-        "relevance": "gives prime gap O(n^1.05) near n²; Legendre requires O(n); doesn't close the gap but provides a second decomposition trajectory"
-      }
-    ],
-    "metadata": {
-      "note": "genuinely open; there is always a prime between consecutive perfect squares",
-      "difficulty": "one of Landau's four problems (1912), still unresolved",
-      "decomposability_prediction": "structured_null — Bertrand anchor enables multiple distinct decomposition strategies across model families; expect N_real ≥ 2, hardness ≠ null",
-      "decomposition_note": "∧ appears inside the ∃ scope (the witness conditions), not at the outer quantifier level — models decompose via the ∃-structure (Bertrand anchor), not by splitting conjunction"
-    }
-  },
-  {
-    "id": "twin-primes",
-    "statement": "∀ N : ℕ, ∃ p : ℕ, N < p ∧ Nat.Prime p ∧ Nat.Prime (p + 2)",
-    "tier": "open",
-    "decomposition_type": "existential",
-    "source": "proving-ground/benchmark-v1",
-    "title": "Twin Prime Conjecture",
-    "references": [
-      "https://en.wikipedia.org/wiki/Twin_prime"
-    ],
-    "preamble": "import Mathlib",
-    "proved_after": null,
-    "literature_anchors": [
-      {
-        "name": "Chen's Theorem (1973)",
-        "statement": "every sufficiently large even integer = prime + semiprime",
-        "in_mathlib": false,
-        "relevance": "closest result to twin primes; establishes the 6k±1 canonical form and sieve method applicability"
-      },
-      {
-        "name": "Goldston-Pintz-Yıldırım (2005)",
-        "statement": "liminf (p_{n+1} - p_n) / log p_n = 0",
-        "in_mathlib": false,
-        "relevance": "small gaps exist infinitely often; foundation for Maynard/Zhang bounded gaps"
-      },
-      {
-        "name": "Maynard (2013) / Zhang (2013)",
-        "statement": "liminf (p_{n+1} - p_n) < 246 (current best: 2)",
-        "in_mathlib": false,
-        "relevance": "bounded prime gaps proven; direct predecessor to twin prime conjecture"
-      }
-    ],
-    "metadata": {
-      "note": "genuinely open; confirmed structured_null in first run (Claude isolated {p | Prime p ∧ Prime (p+2)}.Infinite with real unboundedness structure)",
-      "decomposability_prediction": "structured_null — richest anchor set of the open tier (Chen/GPY/Maynard progression); expect 3+ distinct decomposition strategies: (1) Chen sieve path: p + p2, arguing why semiprime→twin requires closing a single gap; (2) GPY/Zhang path: bounded gaps proven for gap=246, 'squeezing' argument toward gap=2; (3) k-tuple/Maynard path: dense prime constellations establish frequency; all fail at same step but via different routes. First-run data confirmed N_real ≥ 2 (Claude produced genuine unboundedness structure, not bare restatement). Highest expected N_real of all open-tier problems."
-    }
-  },
-  {
-    "id": "goldbach",
-    "statement": "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n",
-    "tier": "open",
-    "decomposition_type": "existential",
-    "source": "proving-ground/benchmark-v1",
-    "title": "Goldbach's Conjecture",
-    "references": [
-      "https://en.wikipedia.org/wiki/Goldbach%27s_conjecture"
-    ],
-    "preamble": "import Mathlib",
-    "proved_after": null,
-    "literature_anchors": [
-      {
-        "name": "Chen's Theorem (1973)",
-        "statement": "every sufficiently large even integer = prime + semiprime (p2)",
-        "in_mathlib": false,
-        "relevance": "closest result to Goldbach; reduces the hard part to distinguishing prime from semiprime"
-      },
-      {
-        "name": "Vinogradov (1937)",
-        "statement": "every sufficiently large odd integer is the sum of three primes",
-        "in_mathlib": false,
-        "relevance": "odd Goldbach proven for large N; even Goldbach remains open"
-      }
-    ],
-    "metadata": {
-      "note": "genuinely open; first-run data shows Haiku padding (finite cases) inflates scalar — use artifact-first reporting for open tier",
-      "decomposability_prediction": "structured_null — two distinct anchor trajectories; expect 2 decomposition strategies: (1) Chen path: every large even = p + p2 (semiprime); final gap is semiprime→prime (single Goldbach gap); (2) Vinogradov path: odd Goldbach closed for large N via circle method; even case framed as reduction; both paths fail at the same open step but arrive differently. N_real likely 2 (Chen path + Vinogradov path); slightly less rich than twin-primes which has 3 distinct trajectories. Chen's theorem is the canonical partial result — models that anchor here have the strongest gradient."
-    }
-  }
 ]

@@ -155,7 +155,12 @@ def collect(
     model_names = [name for name, _ in entries]
     decompositions = [d for _, d in entries]
     consensus = (
-        compute_consensus(problem.id, decompositions, model_ids=model_names)
+        compute_consensus(
+            problem.id,
+            decompositions,
+            model_ids=model_names,
+            required_predicates=list(problem.required_predicates),
+        )
         if decompositions else None
     )
 

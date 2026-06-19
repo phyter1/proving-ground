@@ -859,3 +859,73 @@ def test_canonical_match_no_valid_decompositions():
     r = compute_consensus("consecutive", [d_degen])
     assert r.canonical_conjuncts == frozenset({"n ≤ n + 1", "2 ∣ n * (n + 1)"})
     assert r.n_canonical_match == 0
+
+
+# --- n_key_term_absent ------------------------------------------------------
+
+GOLDBACH_TARGET = "∀ n : ℕ, 2 < n → Even n → ∃ p q : ℕ, Nat.Prime p ∧ Nat.Prime q ∧ p + q = n"
+_GOLDBACH_CORRECT = ["Nat.Prime p ∧ Nat.Prime q", "p + q = n"]
+_GOLDBACH_WRONG = ["Odd p ∧ Odd q", "p + q = n"]
+
+
+def test_key_term_absent_no_required_predicates_returns_none():
+    d = _decomp("g", _GOLDBACH_CORRECT, target_statement=GOLDBACH_TARGET)
+    r = compute_consensus("g", [d, d], model_ids=["m1", "m2"])
+    assert r.n_key_term_absent is None
+
+
+def test_key_term_absent_all_present():
+    d = _decomp("g", _GOLDBACH_CORRECT, target_statement=GOLDBACH_TARGET)
+    r = compute_consensus("g", [d, d], model_ids=["m1", "m2"], required_predicates=["Nat.Prime"])
+    assert r.n_key_term_absent == 0
+
+
+def test_key_term_absent_wrong_predicate():
+    d_wrong = _decomp("g", _GOLDBACH_WRONG, target_statement=GOLDBACH_TARGET)
+    d_right = _decomp("g", _GOLDBACH_CORRECT, target_statement=GOLDBACH_TARGET)
+    r = compute_consensus("g", [d_wrong, d_right], model_ids=["m1", "m2"],
+                          required_predicates=["Nat.Prime"])
+    assert r.n_key_term_absent == 1
+
+
+def test_key_term_absent_all_wrong():
+    d = _decomp("g", _GOLDBACH_WRONG, target_statement=GOLDBACH_TARGET)
+    r = compute_consensus("g", [d, d], model_ids=["m1", "m2"], required_predicates=["Nat.Prime"])
+    assert r.n_key_term_absent == 2
+
+
+def test_key_term_absent_multiple_required_all_present():
+    # Even-or-odd: both predicates present in one decomposition.
+    d = _decomp("eoo", ["Even n", "Odd n"], target_statement="∀ n : ℕ, Even n ∨ Odd n")
+    r = compute_consensus("eoo", [d, d], model_ids=["m1", "m2"],
+                          required_predicates=["Even", "Odd"])
+    assert r.n_key_term_absent == 0
+
+
+def test_key_term_absent_multiple_required_one_missing():
+    # Decomp mentions Even but not Odd — Odd predicate absent.
+    # Use realistic multi-subgoal decomposition so it isn't caught by is_degenerate.
+    d = _decomp("eoo", ["∃ k : ℕ, n = 2 * k", "Even n → Even n"],
+                target_statement="∀ n : ℕ, Even n ∨ Odd n")
+    r = compute_consensus("eoo", [d, d], model_ids=["m1", "m2"],
+                          required_predicates=["Even", "Odd"])
+    assert r.n_key_term_absent == 2
+
+
+def test_key_term_absent_degenerate_excluded():
+    # Degenerate decomp is not counted in n_key_term_absent.
+    target = GOLDBACH_TARGET
+    d_degen = _decomp("g", [target], target_statement=target)
+    d_right = _decomp("g", _GOLDBACH_CORRECT, target_statement=target)
+    r = compute_consensus("g", [d_degen, d_right], model_ids=["m1", "m2"],
+                          required_predicates=["Nat.Prime"])
+    # Only d_right is valid; it contains Nat.Prime → n_key_term_absent=0
+    assert r.n_key_term_absent == 0
+
+
+def test_key_term_absent_no_valid_decompositions_returns_zero():
+    # All degenerate → real=[] → n_key_term_absent=0 (sum over empty set).
+    target = GOLDBACH_TARGET
+    d_degen = _decomp("g", [target], target_statement=target)
+    r = compute_consensus("g", [d_degen], required_predicates=["Nat.Prime"])
+    assert r.n_key_term_absent == 0

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Sequence, Iterable
 
 from proving_ground.models import Decomposition
 
@@ -360,6 +360,18 @@ def _extract_top_level_conjuncts(statement: str) -> frozenset[str] | None:
     return frozenset(_normalize_statement(c) for c in conjuncts if c)
 
 
+def _contains_any_key_term(decomp: Decomposition, predicates: Iterable[str]) -> bool:
+    """Return True when any required predicate appears anywhere in the decomposition.
+
+    Each predicate is matched as a bare substring of the concatenated subgoal
+    statements. Lean dotted identifiers (``Nat.Prime``) are distinctive enough
+    that substring matching produces no false positives in practice. An empty
+    predicate list returns True (no requirements → vacuously satisfied).
+    """
+    text = " ".join(sg.statement for sg in decomp.subgoals)
+    return all(p in text for p in predicates)
+
+
 def pairwise_jaccard(sets: Sequence[frozenset[str]]) -> float:
     """Mean pairwise Jaccard similarity across all pairs in *sets*.
 
@@ -416,6 +428,12 @@ class ConsensusResult:
             set equals ``canonical_conjuncts`` exactly.  ``None`` when the target
             is not a conjunction (``canonical_conjuncts is None``).  A model that
             produces extra or different subgoals does not count as a match.
+        n_key_term_absent: Number of valid models whose decompositions are missing
+            at least one required predicate from the problem's ``required_predicates``
+            list.  ``None`` when no required predicates are specified (vacuous check).
+            Non-zero indicates soundness failures — models substituted wrong predicates
+            (e.g. "Odd" instead of "Nat.Prime" in Goldbach) rather than genuinely
+            divergent proof strategies.
     """
 
     problem_id: str
@@ -428,6 +446,7 @@ class ConsensusResult:
     novel_statements: frozenset[str]
     canonical_conjuncts: frozenset[str] | None
     n_canonical_match: int | None
+    n_key_term_absent: int | None
 
 
 def _is_valid_for_consensus(decomp: Decomposition) -> bool:
@@ -454,6 +473,7 @@ def compute_consensus(
     problem_id: str,
     decompositions: Sequence[Decomposition],
     model_ids: Sequence[str] | None = None,
+    required_predicates: Sequence[str] = (),
 ) -> ConsensusResult:
     """Compute a hardness signal from N models' decompositions of the same problem.
 
@@ -468,6 +488,12 @@ def compute_consensus(
     runs of the same model produce agreement-by-construction rather than cross-model
     signal — Jaccard between identical outputs from the same model is trivially 1.0
     (hardness → 0.0 spuriously).
+
+    *required_predicates* is a list of Lean identifier strings that must appear in
+    any sound decomposition (e.g. ``["Nat.Prime"]`` for Goldbach). When non-empty,
+    ``n_key_term_absent`` counts valid models whose decompositions are missing at
+    least one required predicate — a soundness-failure signal distinct from genuine
+    proof-path divergence.
 
     Degenerate decompositions (sole subgoal == target statement) and invalid
     non-degenerate outputs (trivial tautologies, reference-only) are excluded
@@ -506,6 +532,15 @@ def compute_consensus(
     # Use the first decomposition's target_statement (all should share the same target).
     canonical_conjuncts = _extract_top_level_conjuncts(decompositions[0].target_statement)
 
+    # Key-term soundness: count valid models missing any required predicate.
+    n_key_term_absent: int | None
+    if required_predicates:
+        n_key_term_absent = sum(
+            1 for d in real if not _contains_any_key_term(d, required_predicates)
+        )
+    else:
+        n_key_term_absent = None
+
     if not real:
         return ConsensusResult(
             problem_id=problem_id,
@@ -518,6 +553,7 @@ def compute_consensus(
             novel_statements=frozenset(),
             canonical_conjuncts=canonical_conjuncts,
             n_canonical_match=0 if canonical_conjuncts is not None else None,
+            n_key_term_absent=n_key_term_absent,
         )
 
     # Raw sets for novel-statement attribution (preserve display strings).
@@ -555,6 +591,7 @@ def compute_consensus(
             novel_statements=frozenset(novel),
             canonical_conjuncts=canonical_conjuncts,
             n_canonical_match=n_canonical_match,
+            n_key_term_absent=n_key_term_absent,
         )
 
     consensus = pairwise_jaccard(norm_sets)
@@ -570,6 +607,7 @@ def compute_consensus(
         novel_statements=frozenset(novel),
         canonical_conjuncts=canonical_conjuncts,
         n_canonical_match=n_canonical_match,
+        n_key_term_absent=n_key_term_absent,
     )
 
 

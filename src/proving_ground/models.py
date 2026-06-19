@@ -131,6 +131,7 @@ class Problem:
     preamble: str = "import Mathlib"
     proved_after: str | None = None
     metadata: dict[str, str] = field(default_factory=dict)
+    required_predicates: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
