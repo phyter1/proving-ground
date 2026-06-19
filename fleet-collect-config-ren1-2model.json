@@ -1,0 +1,15 @@
+{
+  "models": [
+    {
+      "name": "ren3/qwen3.5-9b-mlx",
+      "model": "mlx-community/Qwen3.5-9B-MLX-4bit",
+      "base_url": "http://ren3.local:3000/v1"
+    },
+    {
+      "name": "ren2/gemma4-e2b",
+      "model": "gemma4:e2b",
+      "base_url": "http://ren2.local:11434/v1"
+    }
+  ],
+  "_note": "2-model config (qwen3.5-mlx + gemma4-e2b). Excludes gpt-oss-20b which has intermittent 300s inference timeouts on ren4 — confirmed unreliable for collection runs as of 2026-06-19 beat 901."
+}

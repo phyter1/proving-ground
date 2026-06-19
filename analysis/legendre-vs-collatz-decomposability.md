@@ -385,6 +385,57 @@ that are robustly above or below the boundary aren't affected.
    patterns get a `needs_review` flag. At this scale, manual review takes ~30 seconds per
    output.
 
+## Calibration baseline: statement shape predicts decomposability (beat 901, 2026-06-19)
+
+Running tractable-tier problems with the current fleet revealed an unexpected finding:
+decomposability correlates with statement *shape*, not just mathematical difficulty tier.
+
+**Results from 2-model fleet (qwen3.5-mlx + gemma4-e2b):**
+
+| Problem | Statement | Shape | hardness |
+|---------|-----------|-------|---------|
+| tractable-consecutive | ∀ n, n≤n+1 ∧ 2\|n(n+1) | conjunction (∧) | **0.0** |
+| tractable-even-or-odd | ∀ n, Even n ∨ Odd n | disjunction (∨) | **null** |
+| tractable-even-product | ∀ n, Even (n*(n+1)) | single predicate | **null** |
+
+The tractable-consecutive result is the clean calibration signal: hardness=0.0 because
+both models produce identical correct decompositions of the conjunction. The ∧ in the
+statement is a natural decomposition point — models split it into `∀ n, n ≤ n+1` and
+`∀ n, 2 ∣ n*(n+1)`, achieving perfect consensus.
+
+The disjunction (∨) and single-predicate cases produce null hardness — indistinguishable
+from the open-problem degenerate signature. Both models restated the target rather than
+decomposing it.
+
+**What this means for corpus design:**
+
+The metric does not measure "is this problem hard?" — it measures "does the statement
+structure prompt decomposition?" Those correlate on open problems (no anchor → degenerate)
+but diverge on tractable problems (provable ≠ has decomposition structure).
+
+**Implication 1: The calibration tier needs structural pre-filtering.** Not all "weakly open
+/ provable" problems serve as useful calibration baselines. A problem earns calibration value
+only if its statement shape prompts non-degenerate decomposition. Current heuristic: look for
+∧-conjunction structure. `∀ n, A ∧ B` → calibration. `∀ n, A ∨ B` or `∀ n, P n` → likely
+degenerate regardless of difficulty.
+
+**Implication 2: The metric discriminates on two independent axes.** Not one.
+
+| | ∧-shaped statement | Other statement shape |
+|---|---|---|
+| **Open problem** | Confusion or structured (hypothesis: ↑ anchors → ↑ structured) | Degenerate |
+| **Tractable problem** | hardness = 0 (calibration ✓) | Degenerate (same as open) |
+
+The lower-right cell (tractable + non-∧-shaped) produces the same signature as open problems.
+External ground truth (tier label) is required to distinguish them when the metric returns null.
+
+**Implication 3: Prime-gaps is the interesting tractable case.** Statement:
+`∀ k : ℕ, ∃ n : ℕ, ∀ j : ℕ, 1 ≤ j → j ≤ k → ¬Nat.Prime (n + j)`. This has `∃∀`
+structure — a constructive witness pattern (n = (k+1)! + 1 gives k consecutive composites).
+Models that know the factorial-offset construction would produce a distinct decomposition:
+reduce to showing each `(k+1)! + j` is composite for j ∈ [1,k]. Results pending from 2-model
+calibration run.
+
 ## Connection to open question in first-run-findings
 
 The partial-results library approach is the right direction. The library doesn't need to
