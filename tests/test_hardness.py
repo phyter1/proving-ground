@@ -10,6 +10,7 @@ from proving_ground.hardness import (
     _normalize_statement,
     _token_containment,
     compute_consensus,
+    is_confusion_non_degenerate,
     is_degenerate,
     novelty_weight,
     pairwise_jaccard,
@@ -159,6 +160,46 @@ def test_partial_echo_multi_not_degenerate():
     d = _decomp("conj-1", [THEOREM, "Even 0 ∨ Odd 0"], target_statement=THEOREM)
     assert is_degenerate(d) is False
 
+
+
+# --- is_confusion_non_degenerate --------------------------------------------
+
+LEGENDRE = "∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p"
+COLLATZ = "∀ n : ℕ, 0 < n → ∃ k : ℕ, Function.iterate (fun m => if m % 2 = 0 then m / 2 else 3 * m + 1) k n = 1"
+
+
+def test_spurious_conjunct_is_confusion():
+    # gpt-oss-20b pattern on Legendre: target ∧ p % 2 = 1
+    subgoal = LEGENDRE + " ∧ p % 2 = 1"
+    d = _decomp("legendre", [subgoal], target_statement=LEGENDRE)
+    assert is_degenerate(d) is False
+    assert is_confusion_non_degenerate(d) is True
+
+
+def test_spurious_conjunct_collatz_is_confusion():
+    # gpt-oss-20b pattern on Collatz: target ∧ k ≤ 100
+    subgoal = COLLATZ + " ∧ k ≤ 100"
+    d = _decomp("collatz", [subgoal], target_statement=COLLATZ)
+    assert is_degenerate(d) is False
+    assert is_confusion_non_degenerate(d) is True
+
+
+def test_genuine_decomp_not_confusion():
+    # gemma4 v1 Legendre: existence-in-interval + primality (two separate subgoals)
+    d = _decomp(
+        "legendre",
+        ["∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2", "Nat.Prime p"],
+        target_statement=LEGENDRE,
+    )
+    assert is_degenerate(d) is False
+    assert is_confusion_non_degenerate(d) is False
+
+
+def test_degenerate_not_confusion():
+    # Degenerate (exact echo) → is_confusion returns False by contract
+    d = _decomp("legendre", [LEGENDRE], target_statement=LEGENDRE)
+    assert is_degenerate(d) is True
+    assert is_confusion_non_degenerate(d) is False
 
 
 # --- _token_containment -----------------------------------------------------

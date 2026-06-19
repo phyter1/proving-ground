@@ -167,6 +167,34 @@ def is_degenerate(decomp: Decomposition, near_degenerate_threshold: float = 0.9)
     return _token_containment(raw_stmt, raw_target) >= near_degenerate_threshold
 
 
+def is_confusion_non_degenerate(decomp: Decomposition) -> bool:
+    """Return True when a non-degenerate output uses the spurious-constraint pattern.
+
+    Detects the gpt-oss-20b failure mode: adding extra conjuncts to the target
+    statement rather than decomposing it (e.g. ``target ∧ k ≤ 100`` or
+    ``target ∧ p % 2 = 1``). The target appears as a literal prefix or
+    normalized-prefix of the subgoal.
+
+    Returns False for degenerate outputs (caller should check is_degenerate first).
+
+    Does NOT detect the gemma4 Collatz confusion pattern (trivial base case +
+    target echo), which is caught by is_degenerate via the multi-subgoal
+    near-degenerate path.
+    """
+    if is_degenerate(decomp):
+        return False
+    target = decomp.target_statement.strip()
+    norm_target = _normalize_statement(target)
+    for sg in decomp.subgoals:
+        stmt = sg.statement.strip()
+        if stmt != target and stmt.startswith(target):
+            return True
+        norm_stmt = _normalize_statement(stmt)
+        if norm_stmt != norm_target and norm_stmt.startswith(norm_target):
+            return True
+    return False
+
+
 def pairwise_jaccard(sets: Sequence[frozenset[str]]) -> float:
     """Mean pairwise Jaccard similarity across all pairs in *sets*.
 
