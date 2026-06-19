@@ -146,3 +146,76 @@ is information, not measurement failure.
 (some open problems are "closer" to being solved than others) would require a different
 approach — model capability assessment, or a library of known partial results to compare
 against.
+
+## Discrimination gap and structural checks (June 2026, beats 912–914)
+
+The decomposability metric exposes a residual ambiguity: **hardness_score = 1.0 can mean
+two very different things.** The calibration data contains both:
+
+- `tractable-even-or-odd`: models fully diverge (each picks a different proof strategy for
+  the disjunction) → hardness = 1.0. But the problem *is* tractable — the models just found
+  distinct valid paths.
+- `goldbach`: models diverge because they're confused, not because multiple valid strategies
+  exist → hardness = 1.0.
+
+Both score identically. The diversity gate (beat 911, `n_distinct_models`) ensures consensus
+requires ≥ 2 distinct model families, but it doesn't resolve the tractable-vs-hard ambiguity
+within valid multi-model runs.
+
+### Canonical conjunction check (beat 913)
+
+`Problem.decomposition_type` was already present. Beat 913 added structure-aware extraction:
+`_extract_top_level_conjuncts(statement)` parses targets of the form `A ∧ B` into a
+`frozenset{A, B}` and `ConsensusResult` carries `canonical_conjuncts` and `n_canonical_match`.
+
+Empirical result on calibration data (`collection-calib-tractable-consecutive-v1.json`,
+3 models: gemma4-e2b, phi4, gemma4-e4b):
+
+- **tractable-consecutive** (`∀ n, n ≤ n+1 ∧ 2∣n*(n+1)`): canonical = {n ≤ n+1, 2∣n*(n+1)},
+  `n_canonical_match = 2`. phi4 and gemma4-e4b hit the canonical decomposition exactly.
+  gemma4-e2b wrapped the divisibility claim in an extra antecedent (`n ≤ n+1 →`) — a
+  conjunction misread as an implication, producing a 3-subgoal decomposition that misses
+  canonical entirely.
+- **tractable-even-or-odd**: canonical = None (target is a disjunction, not a conjunction).
+  `n_canonical_match = None`. This is correct — there's no single canonical decomposition
+  for a disjunction, so the score isn't applicable.
+- **goldbach**: canonical = None (top-level `∀` wraps a complex body; `_extract_top_level_conjuncts`
+  rejects non-conjunction tops).
+
+The canonical check is useful precisely where it applies: conjunction targets. It cleanly
+surfaces models that confuse conjunctions with implications and produces a concrete
+"match rate" signal.
+
+### Key-term soundness heuristic (beat 914)
+
+`Problem.required_predicates` carries Lean identifiers that must appear in any sound
+decomposition. `compute_consensus()` accepts `required_predicates` and counts
+`n_key_term_absent`: models whose full decomposition text contains none of the required
+predicates.
+
+Beat 914's prediction: Goldbach with `required_predicates=["Nat.Prime"]` should show
+`n_key_term_absent ≥ 1` because phi4 was observed producing `∃ p q : ℕ, Odd p ∧ Odd q ∧
+p + q = n` (wrong predicate substitution). **Calibration baseline falsified this prediction.**
+
+Reprocessing `collection-goldbach-3model-v1.json` (gemma4-e2b, phi4, gemma4-e4b):
+- gemma4-e2b: subgoals contain `Nat.Prime` (in a different role — prime divisors, not prime
+  summands — but the substring check passes)
+- phi4: first subgoal has `Odd p ∧ Odd q`, but *second* subgoal mentions `Nat.Prime n` in a
+  factorization context → model-level check passes
+- gemma4-e4b: produces `lemma_3` (bare identifier, caught by `is_bare_identifier`) → excluded
+  from valid decompositions; diversity gate fires, consensus = None
+
+Result: `n_key_term_absent = 0` for goldbach. The heuristic did not discriminate.
+
+**Why the prediction failed.** The check is per-model and per-decomposition-text — it asks
+"does *any* subgoal in this model's decomposition contain the required predicate?" A model can
+mention `Nat.Prime` superficially (in a side constraint, in the wrong role) while getting the
+structure wrong, and still pass. For Goldbach, a sound decomposition requires `Nat.Prime`
+applied to *both summands* in a `p + q = n` structure. Detecting that requires parsing the
+Lean expression, not substring matching.
+
+**The discrimination gap is persistent.** Both tractable-even-or-odd and goldbach show:
+hardness = 1.0, n_canonical_match = None, n_key_term_absent = 0. No current heuristic
+distinguishes them. The only reliable instrument is **Lean verification** — a sound Lean
+tactic proof of `subgoal → target` confirms the decomposition is structurally valid, not
+just syntactically plausible. This is the next gate in the pipeline.
