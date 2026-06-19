@@ -4,6 +4,11 @@ Usage:
     python scripts/run_collect.py --config fleet-collect-config-ren1.json \
         --problem-id twin-primes --corpus problems/benchmark-v1.json \
         --out runs/collection-twin-primes-ren1-v4.json
+
+    # Run k=5 independent collections, auto-naming v1..v5:
+    python scripts/run_collect.py --config fleet-collect-config-ren1-local.json \
+        --problem-id legendre --corpus problems/benchmark-v1.json \
+        --out runs/collection-legendre-ren1-local --k 5
 """
 
 from __future__ import annotations
@@ -57,18 +62,18 @@ def runners_from_config(config_path: str) -> list[OpenAICompatibleRunner]:
     return runners
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", required=True)
-    parser.add_argument("--problem-id", required=True)
-    parser.add_argument("--corpus", required=True)
-    parser.add_argument("--out", required=True)
-    args = parser.parse_args()
+def _next_version(out_prefix: str) -> str:
+    """Return next vN path that doesn't exist, starting from v1."""
+    n = 1
+    while True:
+        path = Path(f"{out_prefix}-v{n}.json")
+        if not path.exists():
+            return str(path)
+        n += 1
 
-    problem = load_problem(args.corpus, args.problem_id)
-    runners = runners_from_config(args.config)
 
-    print(f"Collecting {problem.id!r} with {len(runners)} models...")
+def _run_once(problem: Problem, runners: list[OpenAICompatibleRunner], out_path: Path) -> None:
+    print(f"Collecting {problem.id!r} → {out_path.name} with {len(runners)} models...")
     for r in runners:
         print(f"  - {r.name} ({r.model} @ {r.base_url})")
 
@@ -98,15 +103,41 @@ def main() -> None:
         "errors": [{"model": m, "error": e} for m, e in result.errors],
     }
 
-    out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print(f"\nResult saved to {out_path}")
-    print(f"Consensus: {output['consensus']}")
+    print(f"  Saved to {out_path}")
+    print(f"  Consensus: {output['consensus']}")
     if result.errors:
-        print(f"Errors: {result.errors}")
+        print(f"  Errors: {result.errors}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", required=True)
+    parser.add_argument("--problem-id", required=True)
+    parser.add_argument("--corpus", required=True)
+    parser.add_argument("--out", required=True,
+                        help="Output path. With --k, treated as prefix and versioned automatically.")
+    parser.add_argument("--k", type=int, default=1,
+                        help="Number of independent collection runs (default 1). "
+                             "With k>1, --out is treated as a path prefix and each run "
+                             "is saved as <prefix>-v1.json, <prefix>-v2.json, ... "
+                             "skipping versions that already exist.")
+    args = parser.parse_args()
+
+    problem = load_problem(args.corpus, args.problem_id)
+    runners = runners_from_config(args.config)
+
+    if args.k == 1:
+        _run_once(problem, runners, Path(args.out))
+    else:
+        for i in range(args.k):
+            out_path = Path(_next_version(args.out))
+            print(f"\n[{i+1}/{args.k}] ", end="")
+            _run_once(problem, runners, out_path)
+        print(f"\nCompleted {args.k} runs.")
 
 
 if __name__ == "__main__":
