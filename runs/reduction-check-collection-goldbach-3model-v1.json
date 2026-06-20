@@ -1,0 +1,29 @@
+{
+  "problem_id": "goldbach",
+  "target_statement": "\u2200 n : \u2115, 2 < n \u2192 Even n \u2192 \u2203 p q : \u2115, Nat.Prime p \u2227 Nat.Prime q \u2227 p + q = n",
+  "n_models": 3,
+  "n_auto_verifiable": 0,
+  "results": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "n_subgoals": 4,
+      "auto_verifiable": false,
+      "closing_tactic": null,
+      "errors": []
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "n_subgoals": 2,
+      "auto_verifiable": false,
+      "closing_tactic": null,
+      "errors": []
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "n_subgoals": 2,
+      "auto_verifiable": false,
+      "closing_tactic": null,
+      "errors": []
+    }
+  ]
+}

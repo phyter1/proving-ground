@@ -1,0 +1,29 @@
+{
+  "problem_id": "tractable-even-or-odd",
+  "target_statement": "\u2200 n : \u2115, Even n \u2228 Odd n",
+  "n_models": 3,
+  "n_auto_verifiable": 3,
+  "results": [
+    {
+      "model": "ren3/gemma4-e2b-mlx",
+      "n_subgoals": 2,
+      "auto_verifiable": true,
+      "closing_tactic": "intro n; induction n with | zero => aesop | succ k ih => aesop",
+      "errors": []
+    },
+    {
+      "model": "ren4/phi4-14b",
+      "n_subgoals": 2,
+      "auto_verifiable": true,
+      "closing_tactic": "intro n; induction n with | zero => aesop | succ k ih => aesop",
+      "errors": []
+    },
+    {
+      "model": "ren4/gemma4-e4b",
+      "n_subgoals": 2,
+      "auto_verifiable": true,
+      "closing_tactic": "intro n; induction n with | zero => aesop | succ k ih => aesop",
+      "errors": []
+    }
+  ]
+}
