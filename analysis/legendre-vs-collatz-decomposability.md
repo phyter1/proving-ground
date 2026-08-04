@@ -1357,3 +1357,74 @@ For `goldbach` (target: universal implication into existential):
 - Hardness=1.0 reflects genuine search-space confusion — same flag as even-or-odd, but the *reason* differs (confusion vs. path multiplicity)
 
 **Remaining discrimination gap**: canonical_conjuncts=None does not itself discriminate "easy with multiple proof routes" from "hard with confused attempts" — both are None. The distinction requires either Lean verification or key-term soundness checking (still open). What the canonical check DOES provide: for conjunctive problems, n_canonical_match tells us how many models understood the decomposition structure. This is the most actionable metric for conjunctive calibration problems.
+
+---
+
+## Legendre Lean auto-verification (beat ~920, ren1, 2026-08-04)
+
+*Picking up 45 days after beat 916 closed the discrimination gap for tractable-even-or-odd and goldbach.*
+
+### Context
+
+Beat 916 established that Lean auto-verification discriminates tractable from open:
+- `tractable-even-or-odd`: 3/3 auto-verifiable (via `simp_all`)
+- `goldbach` (3-model run): 0/3 auto-verifiable
+
+Twin primes (primus collection, `collection-twin-primes-primus-v1.json`) was partially covered:
+- The qwen3.6:35b-a3b decomposition was caught by the **near-target restatement gate** (`exact h0`
+  closes because `∃ p > N, Prime p ∧ Prime (p+2)` is definitionally equal to the existential in the target).
+- 0/N auto-verifiable, 1 near-target restatement — confirmed open.
+
+Legendre (v3 data, `runs/collection-legendre-ren1-local-v3.json`) was the outstanding third case.
+
+### Result: `reduction-check-collection-legendre-ren1-local-v3.json`
+
+Run on primus (`ELAN_HOME=/models/.elan`, Lean 4.31.0-rc1, Mathlib loaded in 25.7s).
+
+| Model | Subgoal | Result |
+|-------|---------|--------|
+| ren3/qwen3.5-9b-mlx | full restatement | SKIPPED (degenerate) |
+| ren4/gpt-oss-20b | `∀ n : ℕ, 0 < n → ∃ p : ℕ, n ^ 2 < p ∧ p < (n + 1) ^ 2 ∧ Nat.Prime p ∧ p % 2 = 1` | **not auto-verifiable** |
+| ren2/gemma4-e2b | unquantified conjunct | SKIPPED (degenerate) |
+
+**Summary: 0/3 auto-verifiable, 0 near-target restatements. Legendre confirmed open.**
+
+### The confusion-subgoal false-positive concern: resolved
+
+The gpt-oss-20b subgoal adds `∧ p % 2 = 1` (all primes in the interval must be odd).
+This hypothesis is *strictly stronger* than the target — it logically implies the target
+by dropping the oddness conjunct. A manual proof exists:
+```
+intro n hn; obtain ⟨p, h1, h2, h3, _⟩ := h0 n hn; exact ⟨p, h1, h2, h3⟩
+```
+If `aesop` or `simp_all` could find this, the confusion subgoal would be marked auto-verifiable
+— a false positive (open problem incorrectly scored as tractable).
+
+**Result: neither aesop nor simp_all closed it.** The tactic set (aesop, tauto, simp_all,
+induction variants) does not contain a tactic capable of finding the existential witness when
+the hypothesis has a stronger-than-target form. Auto-verifiability requires very short proofs
+(definitional equality or propositional closure) — not the one-step weakening that confusion
+subgoals require.
+
+**Implication:** The current anti-cheat pipeline (syntactic degenerate gate → near-target gate
+→ Lean auto-verification) does NOT produce false positives for confusion subgoals with the
+existing tactic set. The concern was real but the failure mode doesn't materialize in practice.
+
+A more powerful tactic (e.g. `omega` or `exact?`-style search) could change this — tracking
+note for future tactic set expansion.
+
+### Anti-cheat architecture status (as of beat ~920)
+
+| Gate | What it catches | Status |
+|------|----------------|--------|
+| `is_degenerate` | Syntactic target restatements | ✅ |
+| `is_confusion_non_degenerate` | Spurious conjuncts, echo-containing patterns | ✅ |
+| `is_trivial_tautology` | `True`, `⊤` subgoals | ✅ |
+| `is_reference_only` | Bare identifier subgoals | ✅ |
+| Near-target restatement gate | Definitional equality via `exact h0` | ✅ (beat 818175c) |
+| Lean auto-verification | Tactic-closed reduction | ✅ (beats 5bb49b1, 818175c) |
+
+**Three confirmed open problems, all Lean-verified 0/N auto-verifiable:**
+1. Goldbach — `reduction-check-collection-goldbach-3model-v1.json`
+2. Twin primes — `reduction-check-collection-twin-primes-primus-v1.json` (1 near-target caught)
+3. Legendre — `reduction-check-collection-legendre-ren1-local-v3.json` (this beat)
