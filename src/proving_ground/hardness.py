@@ -434,6 +434,24 @@ class ConsensusResult:
             Non-zero indicates soundness failures — models substituted wrong predicates
             (e.g. "Odd" instead of "Nat.Prime" in Goldbach) rather than genuinely
             divergent proof strategies.
+        n_auto_verifiable: Number of models for which the extracted subgoal types
+            admit a kernel-clean tactic proof of the reduction
+            ``(h1 : T1) → ... → (hk : Tk) → target`` — verified by the Lean REPL
+            without ``sorry``.  ``None`` when the Lean verification pass has not been
+            run (the default).  Populated by ``scripts/check_reductions.py`` running
+            on ren4; use ``dataclasses.replace(result, n_auto_verifiable=N)`` to
+            attach the result to an existing ``ConsensusResult``.
+
+            Discriminating signature (established beat 912–916):
+            - tractable problem: ``n_auto_verifiable >= 1`` (at least one model found
+              a reduction that closes under a conservative tactic set)
+            - confused/spurious decomposition: ``n_auto_verifiable == 0`` (no model's
+              subgoal types actually imply the target — e.g. ``Odd p`` vs ``Nat.Prime p``
+              in Goldbach)
+
+            This is the final discrimination gate: ``hardness_score == 1.0`` can
+            mean either "multiple valid proof paths" (high n_auto_verifiable) or
+            "all models confused" (n_auto_verifiable == 0).
     """
 
     problem_id: str
@@ -447,6 +465,7 @@ class ConsensusResult:
     canonical_conjuncts: frozenset[str] | None
     n_canonical_match: int | None
     n_key_term_absent: int | None
+    n_auto_verifiable: int | None = None
 
 
 def _is_valid_for_consensus(decomp: Decomposition) -> bool:
