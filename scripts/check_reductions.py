@@ -61,6 +61,28 @@ def _has_sorry(resp) -> bool:
     return bool(sorries)
 
 
+def _is_near_target_restatement(server, mathlib_env: int, subgoal_types: list[str], target: str) -> bool:
+    """Check if a single subgoal is definitionally equal to the target.
+
+    Uses `exact h0` — closes only if the types are definitionally equal (e.g. notation
+    expansion: `∃ p > N, P p` vs `∃ p, N < p ∧ P p`). Does NOT fire for genuine
+    decompositions, which require multi-step proof from multiple hypotheses.
+    """
+    from lean_interact import Command
+
+    if len(subgoal_types) != 1:
+        return False
+
+    cmd = f"example (h0 : {subgoal_types[0]}) : {target} := h0"
+    try:
+        resp = server.run(Command(cmd=cmd, env=mathlib_env))
+        messages = getattr(resp, "messages", []) or []
+        errors = [m for m in messages if getattr(m, "severity", "") == "error"]
+        return not errors and not _has_sorry(resp)
+    except Exception:
+        return False
+
+
 def check_reduction(
     server,
     mathlib_env: int,
@@ -76,12 +98,20 @@ def check_reduction(
         "model": model_label,
         "n_subgoals": len(subgoal_types),
         "auto_verifiable": False,
+        "near_target_restatement": False,
         "closing_tactic": None,
         "errors": [],
     }
 
     if not subgoal_types:
         result["errors"].append("no subgoals")
+        return result
+
+    # Pre-check: a single subgoal that is definitionally equal to the target is a
+    # near-target restatement (notation expansion, variable renaming, etc.) and must
+    # NOT be counted as auto-verifiable — it would score an open problem as tractable.
+    if _is_near_target_restatement(server, mathlib_env, subgoal_types, target):
+        result["near_target_restatement"] = True
         return result
 
     hyps = " ".join(f"(h{i} : {t})" for i, t in enumerate(subgoal_types))
@@ -182,7 +212,9 @@ def main() -> None:
         )
         results.append(res)
 
-        if res["auto_verifiable"]:
+        if res.get("near_target_restatement"):
+            print(f"  ⚠ NEAR-TARGET RESTATEMENT (definitionally equal to target — not counted)")
+        elif res["auto_verifiable"]:
             n_auto += 1
             print(f"  ✓ AUTO-VERIFIABLE via: {res['closing_tactic']}")
         else:
@@ -190,10 +222,12 @@ def main() -> None:
             print(f"  ✗ not auto-verifiable" + (f" (errors: {errs[:2]})" if errs else ""))
         print()
 
-    print(f"=== Summary: {n_auto}/{len(entries)} models auto-verifiable ===")
+    n_near_target = sum(1 for r in results if r.get("near_target_restatement"))
+    print(f"=== Summary: {n_auto}/{len(entries)} models auto-verifiable, {n_near_target} near-target restatements ===")
     print(f"problem_id: {problem_id}")
     print(f"n_models: {len(entries)}")
     print(f"n_auto_verifiable: {n_auto}")
+    print(f"n_near_target_restatements: {n_near_target}")
     print()
 
     # Output JSON summary.
@@ -202,6 +236,7 @@ def main() -> None:
         "target_statement": target,
         "n_models": len(entries),
         "n_auto_verifiable": n_auto,
+        "n_near_target_restatements": n_near_target,
         "results": results,
     }
     out_path = run_path.parent / f"reduction-check-{run_path.stem}.json"

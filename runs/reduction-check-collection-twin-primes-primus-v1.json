@@ -1,0 +1,17 @@
+{
+  "problem_id": "twin-primes",
+  "target_statement": "\u2200 N : \u2115, \u2203 p : \u2115, N < p \u2227 Nat.Prime p \u2227 Nat.Prime (p + 2)",
+  "n_models": 1,
+  "n_auto_verifiable": 0,
+  "n_near_target_restatements": 1,
+  "results": [
+    {
+      "model": "primus/qwen3.6-35b",
+      "n_subgoals": 1,
+      "auto_verifiable": false,
+      "near_target_restatement": true,
+      "closing_tactic": null,
+      "errors": []
+    }
+  ]
+}
