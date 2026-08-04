@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from proving_ground.collector import artifact_to_unverified_decomposition
 from proving_ground.extract import ExtractionError, build_prompt, extract_artifact
-from proving_ground.hardness import compute_consensus
+from proving_ground.hardness import compute_consensus, is_degenerate, is_confusion_non_degenerate
 from proving_ground.models import Problem, Tier
 
 
@@ -92,35 +92,40 @@ def main() -> None:
 
     entries = []
     errors = []
+    decompositions = []
 
     try:
-        artifact = extract_artifact(response, problem)
+        artifact = extract_artifact(problem, response)
         decomp = artifact_to_unverified_decomposition(artifact)
+        sg_statements = [sg.statement for sg in decomp.subgoals]
+        deg = is_degenerate(decomp)
+        conf = is_confusion_non_degenerate(decomp)
         entry = {
             "model": args.runner_name,
-            "n_subgoals": len(decomp.subgoal_types),
-            "subgoals": list(decomp.subgoal_types),
-            "is_degenerate": decomp.is_degenerate,
-            "is_confusion": decomp.is_confusion,
+            "n_subgoals": len(sg_statements),
+            "subgoals": sg_statements,
+            "is_degenerate": deg,
+            "is_confusion": conf,
         }
-        print(f"  Extracted: {len(decomp.subgoal_types)} subgoals, degenerate={decomp.is_degenerate}")
-        for sg in decomp.subgoal_types:
+        print(f"  Extracted: {len(sg_statements)} subgoals, degenerate={deg}")
+        for sg in sg_statements:
             print(f"    {sg}")
         entries.append(entry)
+        decompositions.append(decomp)
     except ExtractionError as e:
         print(f"  ExtractionError: {e}")
         errors.append({"model": args.runner_name, "error": str(e)})
 
-    decompositions = [
-        __import__("proving_ground.models", fromlist=["Decomposition"]).Decomposition(
-            subgoal_types=tuple(e["subgoals"]),
-            is_degenerate=e["is_degenerate"],
-            is_confusion=e["is_confusion"],
+    consensus = (
+        compute_consensus(
+            problem.id,
+            decompositions,
+            model_ids=[args.runner_name] * len(decompositions),
+            required_predicates=tuple(problem.required_predicates),
         )
-        for e in entries
-    ]
-
-    consensus = compute_consensus(decompositions) if decompositions else None
+        if decompositions
+        else None
+    )
 
     result = {
         "problem_id": problem.id,
